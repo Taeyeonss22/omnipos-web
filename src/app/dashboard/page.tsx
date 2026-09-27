@@ -11,18 +11,15 @@ export default async function DashboardPage() {
   const totalProducts = await prisma.product.count();
   
   // Para la demo, traemos algunos datos
+  // Si no hay branchId (ej. Admin Principal), filtramos globalmente o por la primera sucursal
+  const inventoryWhere = branchId ? { branchId, quantity: { lte: 10 } } : { quantity: { lte: 10 } };
   const lowStockItems = await prisma.inventory.count({
-    where: {
-      branchId: branchId,
-      quantity: { lte: 10 } // Simulando stock mínimo
-    }
+    where: inventoryWhere
   });
 
+  const activeCashesWhere = branchId ? { register: { branchId }, status: 'OPEN' } : { status: 'OPEN' };
   const activeCashes = await prisma.cashRegisterSession.count({
-    where: {
-      register: { branchId },
-      status: 'OPEN'
-    }
+    where: activeCashesWhere
   });
 
   const stats = [
