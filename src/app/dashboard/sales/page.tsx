@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, Search, Printer } from 'lucide-react';
+import { Receipt, Search, Printer, Eye } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
 
 export default function SalesHistoryPage() {
   const { data: session } = useSession();
   const [sales, setSales] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  const [previewTicket, setPreviewTicket] = useState<any>(null);
 
   useEffect(() => {
     fetchSales();
