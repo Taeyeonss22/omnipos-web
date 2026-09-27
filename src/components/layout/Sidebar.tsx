@@ -37,10 +37,10 @@ export default function Sidebar({ userRole }: SidebarProps) {
 
   return (
     <div className="flex w-64 flex-col border-r bg-white">
-      <div className="flex h-16 items-center justify-center border-b">
-        <h1 className="text-2xl font-bold text-blue-600">{process.env.NEXT_PUBLIC_APP_NAME || 'OmniPOS'}</h1>
+      <div className="flex h-20 items-center gap-3 border-b px-6">
+        <img src="/logo.jpg" alt="Logo" className="h-10 w-10 rounded-md object-contain bg-black" />
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight uppercase">CRIMEN SANTO</h1>
       </div>
-      
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {filteredMenu.map((item) => {
           const Icon = item.icon;

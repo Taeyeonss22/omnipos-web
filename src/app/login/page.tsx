@@ -33,9 +33,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-blue-600">{process.env.NEXT_PUBLIC_APP_NAME || 'OmniPOS'}</h1>
-          <p className="text-gray-500">Sistema de Punto de Venta</p>
+        <div className="mb-8 text-center flex flex-col items-center">
+          <img src="/logo.jpg" alt="Crimen Santo" className="h-24 w-24 rounded-lg bg-black object-contain mb-4 shadow-lg" />
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight uppercase">CRIMEN SANTO</h1>
+          <p className="text-gray-500 mt-2">Sistema de Punto de Venta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
