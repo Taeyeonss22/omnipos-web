@@ -246,6 +246,48 @@ export default function SettingsPage() {
           <button onClick={savePrinterSettings} className="rounded-md bg-gray-900 px-4 py-2 text-white hover:bg-gray-800 font-medium">Guardar Configuración de Ticket</button>
         </div>
       </div>
+
+      <div className="rounded-lg bg-white shadow p-6 mt-6 border-t-4 border-blue-600">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900">📥 Instalador de Impresora en Cajas Nuevas</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Para que esta computadora o cualquier caja nueva pueda imprimir tickets físicos, sigue estos 3 rápidos pasos. 
+          Solo necesitas hacerlo una vez por computadora.
+        </p>
+        
+        <div className="space-y-4">
+          <div className="flex items-start gap-4 p-4 border rounded-md bg-gray-50">
+            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center">1</div>
+            <div>
+              <h3 className="font-medium text-gray-900">Instalar Motor (Node.js)</h3>
+              <p className="text-sm text-gray-500 mb-2">Motor necesario para que Windows se comunique con impresoras USB.</p>
+              <a href="https://nodejs.org/dist/v20.11.1/node-v20.11.1-x64.msi" target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:underline">Descargar e Instalar Node.js (Windows) &rarr;</a>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 p-4 border rounded-md bg-gray-50">
+            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center">2</div>
+            <div>
+              <h3 className="font-medium text-gray-900">Descargar Puente de Impresión</h3>
+              <p className="text-sm text-gray-500 mb-2">El programa oculto que conectará CRIMEN SANTO con el papel.</p>
+              <a href="/print_bridge.zip" download className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                Descargar Print Bridge (.zip)
+              </a>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-4 p-4 border rounded-md bg-gray-50">
+            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-700 font-bold rounded-full flex items-center justify-center">3</div>
+            <div>
+              <h3 className="font-medium text-gray-900">Arrancar Puente</h3>
+              <p className="text-sm text-gray-500">
+                Descomprime la carpeta que descargaste en el Paso 2 (cópiala a tu Disco C: de preferencia).<br/>
+                Entra a la carpeta y dale doble clic al archivo <strong>Iniciar_Impresora.bat</strong>.<br/>
+                <span className="text-green-600 font-semibold text-xs uppercase mt-1 inline-block">¡Listo! La caja ya puede imprimir.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
