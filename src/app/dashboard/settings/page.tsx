@@ -8,17 +8,33 @@ export default function SettingsPage() {
   const [newBranch, setNewBranch] = useState({ name: '', address: '' });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Users state
   const [users, setUsers] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', roleId: '', branchId: '' });
 
+  // Printer Settings
+  const [printerSettings, setPrinterSettings] = useState({
+    width: '80mm',
+    header: 'Ferremix',
+    footer: '¡Gracias por su compra!',
+    printerName: 'printer:impresora_termica'
+  });
+
   useEffect(() => {
     fetchBranches();
     fetchUsers();
     fetchRoles();
+    const localSettings = localStorage.getItem('printerSettings');
+    if (localSettings) {
+      setPrinterSettings(JSON.parse(localSettings));
+    }
   }, []);
+
+  const savePrinterSettings = () => {
+    localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
+    alert('Configuración de impresión guardada localmente.');
+  };
 
   const fetchBranches = async () => {
     const res = await fetch('/api/branches');
@@ -198,6 +214,36 @@ export default function SettingsPage() {
               </li>
             ))}
           </ul>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-white shadow p-6 mt-6 border-t-4 border-gray-800">
+        <h2 className="text-lg font-semibold mb-4 text-gray-900">🖨️ Configuración de Ticket Local (Print Bridge)</h2>
+        <p className="text-sm text-gray-500 mb-6">Estos ajustes se guardan en esta computadora para conectarse a tu impresora física USB.</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Ancho del Papel</label>
+            <select value={printerSettings.width} onChange={e => setPrinterSettings({...printerSettings, width: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black">
+              <option value="58mm">58mm (Pequeña)</option>
+              <option value="80mm">80mm (Estándar)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Nombre de Impresora en Sistema (Ej. USB001, POS-80)</label>
+            <input type="text" value={printerSettings.printerName} onChange={e => setPrinterSettings({...printerSettings, printerName: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Encabezado Comercial (Logo/Texto)</label>
+            <input type="text" value={printerSettings.header} onChange={e => setPrinterSettings({...printerSettings, header: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Pie de Página (Políticas/Agradecimiento)</label>
+            <input type="text" value={printerSettings.footer} onChange={e => setPrinterSettings({...printerSettings, footer: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+          </div>
+        </div>
+        <div className="mt-6 flex justify-end">
+          <button onClick={savePrinterSettings} className="rounded-md bg-gray-900 px-4 py-2 text-white hover:bg-gray-800 font-medium">Guardar Configuración de Ticket</button>
         </div>
       </div>
     </div>

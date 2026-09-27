@@ -207,19 +207,28 @@ export default function POSPage() {
     
     // Función de impresión aislada
     const printTicket = (folioText: string) => {
+      const localSettingsRaw = localStorage.getItem('printerSettings');
+      let localSettings = { header: 'Ferremix', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
+      if (localSettingsRaw) {
+        localSettings = JSON.parse(localSettingsRaw);
+      }
+
       fetch('http://localhost:8080/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           folio: folioText,
-          branchName: process.env.NEXT_PUBLIC_APP_NAME || 'OmniPOS - Sucursal',
+          branchName: localSettings.header,
           date: new Date().toISOString(),
           cashier: session?.user?.name,
           items: cart.map(i => ({ quantity: i.quantity, product: i.name, subtotal: i.subtotal })),
           subtotal,
           tax,
           total,
-          method
+          method,
+          footer: localSettings.footer,
+          width: localSettings.width,
+          printerName: localSettings.printerName
         })
       }).catch(err => console.warn('Print bridge no disponible:', err));
     };

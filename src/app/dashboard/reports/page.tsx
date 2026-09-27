@@ -25,12 +25,18 @@ export default function ReportsPage() {
 
   const handlePrintZ = async (session: any) => {
     try {
+      const localSettingsRaw = localStorage.getItem('printerSettings');
+      let localSettings = { header: 'Ferremix', footer: '', width: '80mm', printerName: 'printer:impresora_termica' };
+      if (localSettingsRaw) {
+        localSettings = JSON.parse(localSettingsRaw);
+      }
+
       await fetch('http://localhost:8080/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           folio: `CORTE-Z-${session.id.slice(0, 6).toUpperCase()}`,
-          branchName: process.env.NEXT_PUBLIC_APP_NAME || 'OmniPOS',
+          branchName: localSettings.header,
           date: session.closingTime || new Date().toISOString(),
           cashier: session.userName,
           items: [
@@ -40,7 +46,10 @@ export default function ReportsPage() {
           subtotal: session.totalSales,
           tax: 0,
           total: session.closingBalance || 0,
-          method: 'Z-REPORT'
+          method: 'Z-REPORT',
+          footer: 'Corte Z Generado Exitosamente',
+          width: localSettings.width,
+          printerName: localSettings.printerName
         })
       });
       alert(`Imprimiendo Corte Z para la caja ${session.register}...`);
