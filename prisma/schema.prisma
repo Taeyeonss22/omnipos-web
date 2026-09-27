@@ -1,0 +1,291 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users             User[]
+  inventories       Inventory[]
+  sales             Sale[]
+  cashRegisters     CashRegister[]
+  transfersOut      TransferRequest[] @relation("SourceBranch")
+  transfersIn       TransferRequest[] @relation("TargetBranch")
+  purchaseOrders    PurchaseOrder[]
+  auditLogs         AuditLog[]
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g. ADMIN, MANAGER, CASHIER, HR
+  description String?
+  permissions String // JSON array of permission strings as a single string
+
+  users       User[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  isActive  Boolean  @default(true)
+  
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  branchId  String?
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales               Sale[]
+  cashRegisterSessions CashRegisterSession[]
+  auditLogs           AuditLog[]
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  
+  products    Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  code        String   @unique // Barcode or SKU
+  name        String
+  description String?
+  price       Float
+  cost        Float
+  unit        String   @default("PZA") // Unit of measure
+  imageUrl    String?
+
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inventories       Inventory[]
+  saleItems         SaleItem[]
+  transferItems     TransferItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+}
+
+model Inventory {
+  id          String   @id @default(uuid())
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  quantity    Int      @default(0)
+  minStock    Int      @default(0)
+  location    String?  // e.g. Aisle 3, Shelf B
+
+  @@unique([branchId, productId])
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  rfc         String?  // For future billing
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  credit      CustomerCredit?
+  sales       Sale[]
+}
+
+model CustomerCredit {
+  id          String   @id @default(uuid())
+  customerId  String   @unique
+  customer    Customer @relation(fields: [customerId], references: [id])
+  creditLimit Float
+  balance     Float @default(0.00) // Amount owed
+
+  payments    CreditPayment[]
+}
+
+model CreditPayment {
+  id          String   @id @default(uuid())
+  creditId    String
+  credit      CustomerCredit @relation(fields: [creditId], references: [id])
+  amount      Float
+  date        DateTime @default(now())
+  method      String   // CASH, CARD, TRANSFER
+}
+
+model Sale {
+  id            String   @id @default(uuid())
+  folio         String   @unique
+  branchId      String
+  branch        Branch   @relation(fields: [branchId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  sessionId     String?
+  session       CashRegisterSession? @relation(fields: [sessionId], references: [id])
+  
+  subtotal      Float
+  tax           Float
+  discount      Float
+  total         Float
+  status        String   @default("COMPLETED") // COMPLETED, CANCELLED
+
+  requiresInvoice Boolean @default(false)
+  invoiceStatus   String? // PENDING, INVOICED
+  invoiceFolio    String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         SaleItem[]
+  payments      Payment[]
+}
+
+model SaleItem {
+  id          String   @id @default(uuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  quantity    Int
+  unitPrice   Float
+  subtotal    Float
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  method      String   // CASH, CARD, CREDIT
+  amount      Float
+}
+
+model CashRegister {
+  id          String   @id @default(uuid())
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  name        String   // e.g. Caja 1
+  isActive    Boolean  @default(true)
+
+  sessions    CashRegisterSession[]
+}
+
+model CashRegisterSession {
+  id              String   @id @default(uuid())
+  registerId      String
+  register        CashRegister @relation(fields: [registerId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  openingTime     DateTime @default(now())
+  closingTime     DateTime?
+  openingBalance  Float
+  closingBalance  Float?
+  difference      Float?
+  status          String   @default("OPEN") // OPEN, CLOSED
+
+  sales           Sale[]
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id          String   @id @default(uuid())
+  folio       String   @unique
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id])
+  
+  status      String   @default("PENDING") // PENDING, RECEIVED, CANCELLED
+  total       Float
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  order           PurchaseOrder @relation(fields: [orderId], references: [id])
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  quantity        Int
+  unitCost        Float
+  receivedQuantity Int     @default(0)
+}
+
+model TransferRequest {
+  id              String   @id @default(uuid())
+  folio           String   @unique
+  sourceBranchId  String
+  sourceBranch    Branch   @relation("SourceBranch", fields: [sourceBranchId], references: [id])
+  targetBranchId  String
+  targetBranch    Branch   @relation("TargetBranch", fields: [targetBranchId], references: [id])
+  
+  status          String   @default("PENDING") // PENDING, APPROVED, SHIPPED, RECEIVED, CANCELLED
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           TransferItem[]
+}
+
+model TransferItem {
+  id          String   @id @default(uuid())
+  transferId  String
+  transfer    TransferRequest @relation(fields: [transferId], references: [id])
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  
+  quantity    Int
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  
+  action      String   // CREATE_SALE, CANCEL_SALE, ADJUST_INVENTORY
+  entity      String   // SALE, INVENTORY, PRODUCT
+  entityId    String
+  details     String   // JSON string with before/after state
+  
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,205 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Store, Plus, Users } from 'lucide-react';
+
+export default function SettingsPage() {
+  const [branches, setBranches] = useState<any[]>([]);
+  const [newBranch, setNewBranch] = useState({ name: '', address: '' });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Users state
+  const [users, setUsers] = useState<any[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', roleId: '', branchId: '' });
+
+  useEffect(() => {
+    fetchBranches();
+    fetchUsers();
+    fetchRoles();
+  }, []);
+
+  const fetchBranches = async () => {
+    const res = await fetch('/api/branches');
+    const data = await res.json();
+    setBranches(data);
+  };
+
+  const fetchUsers = async () => {
+    const res = await fetch('/api/users');
+    if (res.ok) {
+      const data = await res.json();
+      setUsers(data);
+    }
+  };
+
+  const fetchRoles = async () => {
+    const res = await fetch('/api/roles');
+    if (res.ok) {
+      const data = await res.json();
+      setRoles(data);
+    }
+  };
+
+  const handleCreateBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch('/api/branches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newBranch)
+    });
+    if (res.ok) {
+      setNewBranch({ name: '', address: '' });
+      setIsModalOpen(false);
+      fetchBranches();
+      alert('Sucursal creada exitosamente.');
+    } else {
+      alert('Error creando sucursal');
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser)
+    });
+    if (res.ok) {
+      setNewUser({ firstName: '', lastName: '', email: '', password: '', roleId: '', branchId: '' });
+      setIsUserModalOpen(false);
+      fetchUsers();
+      alert('Empleado creado exitosamente.');
+    } else {
+      const data = await res.json();
+      alert(`Error creando empleado: ${data.error}`);
+    }
+  };
+
+  return (
+    <div className="space-y-6 relative">
+      {/* Modal Nueva Sucursal */}
+      {isModalOpen && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-[400px] rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-bold mb-4">Nueva Sucursal / Almacén</h2>
+            <form onSubmit={handleCreateBranch} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Nombre</label>
+                <input type="text" required value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" placeholder="Ej. Sucursal Centro" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Dirección</label>
+                <input type="text" value={newBranch.address} onChange={e => setNewBranch({...newBranch, address: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md px-4 py-2 text-gray-600 hover:bg-gray-100">Cancelar</button>
+                <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nuevo Empleado */}
+      {isUserModalOpen && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-[500px] rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-xl font-bold mb-4">Nuevo Empleado / Cajero</h2>
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Nombre</label>
+                  <input type="text" required value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Apellido</label>
+                  <input type="text" required value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Usuario / PIN (Email)</label>
+                  <input type="text" required value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" placeholder="cajero1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contraseña</label>
+                  <input type="password" required value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Rol</label>
+                  <select required value={newUser.roleId} onChange={e => setNewUser({...newUser, roleId: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black">
+                    <option value="">Selecciona rol...</option>
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Sucursal</label>
+                  <select required value={newUser.branchId} onChange={e => setNewUser({...newUser, branchId: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black">
+                    <option value="">Selecciona sucursal...</option>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setIsUserModalOpen(false)} className="rounded-md px-4 py-2 text-gray-600 hover:bg-gray-100">Cancelar</button>
+                <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Crear Empleado</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Configuración del Sistema</h1>
+          <p className="text-sm text-gray-500">Administra sucursales, almacenes y empleados.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="rounded-lg bg-white shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Store className="h-5 w-5 text-blue-600" /> Sucursales y Almacenes</h2>
+            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+              <Plus className="h-4 w-4" /> Agregar Sucursal
+            </button>
+          </div>
+          
+          <ul className="divide-y divide-gray-200 border rounded-md max-h-96 overflow-y-auto">
+            {branches.map(branch => (
+              <li key={branch.id} className="p-4 hover:bg-gray-50">
+                <div className="font-medium text-gray-900">{branch.name}</div>
+                <div className="text-sm text-gray-500">{branch.address || 'Sin dirección registrada'}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-lg bg-white shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Users className="h-5 w-5 text-purple-600" /> Empleados</h2>
+            <button onClick={() => setIsUserModalOpen(true)} className="flex items-center gap-2 text-sm text-purple-600 hover:underline">
+              <Plus className="h-4 w-4" /> Agregar Empleado
+            </button>
+          </div>
+          
+          <ul className="divide-y divide-gray-200 border rounded-md max-h-96 overflow-y-auto">
+            {users.map(user => (
+              <li key={user.id} className="p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-medium text-gray-900">{user.firstName} {user.lastName}</div>
+                    <div className="text-sm text-gray-500">{user.email} (Rol: {user.role?.name})</div>
+                  </div>
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{user.branch?.name}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
