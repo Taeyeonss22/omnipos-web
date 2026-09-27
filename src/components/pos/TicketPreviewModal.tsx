@@ -58,14 +58,7 @@ export default function TicketPreviewModal({ isOpen, onClose, onPrint, ticketDat
             </table>
 
             <div className="border-t border-dashed border-gray-400 pt-2 mb-4">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>${Number(ticketData.subtotal).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>IVA:</span>
-                <span>${Number(ticketData.tax).toFixed(2)}</span>
-              </div>
+
               <div className="flex justify-between font-bold text-sm mt-1">
                 <span>Total:</span>
                 <span>${Number(ticketData.total).toFixed(2)}</span>

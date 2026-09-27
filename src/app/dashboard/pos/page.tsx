@@ -198,8 +198,8 @@ export default function POSPage() {
   };
 
   const subtotal = cart.reduce((acc, item) => acc + item.subtotal, 0);
-  const tax = subtotal * 0.16;
-  const total = subtotal + tax;
+  const tax = 0;
+  const total = subtotal;
 
   const handleBarcodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -507,14 +507,7 @@ export default function POSPage() {
           </div>
 
           <div className="space-y-4 text-lg">
-            <div className="flex justify-between text-gray-300">
-              <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-gray-300">
-              <span>IVA (16%)</span>
-              <span>${tax.toFixed(2)}</span>
-            </div>
+
             <div className="flex justify-between border-t border-gray-700 pt-4 text-3xl font-bold text-green-400">
               <span>Total</span>
               <span>${total.toFixed(2)}</span>
