@@ -123,11 +123,33 @@ export default function SalesHistoryPage() {
                     <td className="px-6 py-4 text-right font-bold text-gray-900">${sale.total.toFixed(2)}</td>
                     <td className="px-6 py-4 text-center">
                       <button 
-                        onClick={() => handleReprint(sale)}
-                        className="inline-flex items-center gap-1 rounded bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                        onClick={() => {
+                          const localSettingsRaw = localStorage.getItem('printerSettings');
+                          let localSettings = { header: 'CRIMEN SANTO', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
+                          if (localSettingsRaw) localSettings = JSON.parse(localSettingsRaw);
+                          
+                          setPreviewTicket({
+                            sale,
+                            payload: {
+                              folio: `REIMPRESION-${sale.folio}`,
+                              branchName: localSettings.header,
+                              date: sale.createdAt,
+                              cashier: sale.user?.firstName || 'Cajero',
+                              items: sale.items.map((i: any) => ({ quantity: i.quantity, product: i.product.name, subtotal: i.subtotal })),
+                              subtotal: sale.subtotal,
+                              tax: sale.tax,
+                              total: sale.total,
+                              method: sale.payments?.[0]?.method || 'CASH',
+                              footer: localSettings.footer,
+                              width: localSettings.width,
+                              printerName: localSettings.printerName
+                            }
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 rounded bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700 hover:bg-blue-100"
                       >
-                        <Printer className="h-4 w-4" />
-                        Reimprimir
+                        <Eye className="h-4 w-4" />
+                        Ver Ticket
                       </button>
                     </td>
                   </tr>
@@ -137,6 +159,13 @@ export default function SalesHistoryPage() {
           </table>
         </div>
       </div>
+
+      <TicketPreviewModal 
+        isOpen={!!previewTicket}
+        onClose={() => setPreviewTicket(null)}
+        ticketData={previewTicket?.payload}
+        onPrint={() => handleReprint(previewTicket?.sale)}
+      />
     </div>
   );
 }

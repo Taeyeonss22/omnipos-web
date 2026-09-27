@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ShoppingCart, Search, Trash2, Lock, Unlock, Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
 
 interface CartItem {
   productId: string;
@@ -19,6 +20,7 @@ export default function POSPage() {
   const [barcode, setBarcode] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [previewTicket, setPreviewTicket] = useState<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Estado de Caja
@@ -205,31 +207,34 @@ export default function POSPage() {
 
     setIsProcessing(true);
     
-    // Función de impresión aislada
-    const printTicket = (folioText: string) => {
+    const printTicket = (folioText: string, ticketMethod: string = method) => {
       const localSettingsRaw = localStorage.getItem('printerSettings');
-      let localSettings = { header: 'Ferremix', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
+      let localSettings = { header: 'CRIMEN SANTO', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
       if (localSettingsRaw) {
         localSettings = JSON.parse(localSettingsRaw);
       }
 
-      fetch('http://localhost:8080/print', {
+      setPreviewTicket({
+        folio: folioText,
+        branchName: localSettings.header,
+        date: new Date().toISOString(),
+        cashier: session?.user?.name,
+        items: cart.map(i => ({ quantity: i.quantity, product: i.name, subtotal: i.subtotal })),
+        subtotal,
+        tax,
+        total,
+        method: ticketMethod,
+        footer: localSettings.footer,
+        width: localSettings.width,
+        printerName: localSettings.printerName
+      });
+    };
+
+    const sendToPrintBridge = async (payload: any) => {
+      fetch('http://127.0.0.1:8080/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          folio: folioText,
-          branchName: localSettings.header,
-          date: new Date().toISOString(),
-          cashier: session?.user?.name,
-          items: cart.map(i => ({ quantity: i.quantity, product: i.name, subtotal: i.subtotal })),
-          subtotal,
-          tax,
-          total,
-          method,
-          footer: localSettings.footer,
-          width: localSettings.width,
-          printerName: localSettings.printerName
-        })
+        body: JSON.stringify(payload)
       }).catch(err => console.warn('Print bridge no disponible:', err));
     };
 
@@ -482,6 +487,19 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      <TicketPreviewModal 
+        isOpen={!!previewTicket}
+        onClose={() => setPreviewTicket(null)}
+        ticketData={previewTicket}
+        onPrint={() => {
+          fetch('http://127.0.0.1:8080/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(previewTicket)
+          }).catch(err => console.warn('Print bridge no disponible:', err));
+        }}
+      />
     </div>
   );
 }
