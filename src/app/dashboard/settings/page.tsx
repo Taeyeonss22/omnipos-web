@@ -97,8 +97,8 @@ export default function SettingsPage() {
     <div className="space-y-6 relative">
       {/* Modal Nueva Sucursal */}
       {isModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-[400px] rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 sm:items-start sm:pt-10 items-center overflow-y-auto p-4">
+          <div className="w-[400px] rounded-lg max-h-[90vh] overflow-y-auto bg-white p-6 shadow-xl">
             <h2 className="text-xl font-bold mb-4">Nueva Sucursal / Almacén</h2>
             <form onSubmit={handleCreateBranch} className="space-y-4">
               <div>
@@ -121,8 +121,8 @@ export default function SettingsPage() {
 
       {/* Modal Nuevo Empleado */}
       {isUserModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-[500px] rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 sm:items-start sm:pt-10 items-center overflow-y-auto p-4">
+          <div className="w-[500px] rounded-lg max-h-[90vh] overflow-y-auto bg-white p-6 shadow-xl">
             <h2 className="text-xl font-bold mb-4">Nuevo Empleado / Cajero</h2>
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

@@ -234,8 +234,8 @@ export default function InventoryPage() {
     <div className="space-y-6 relative">
       {/* Modal Ajuste de Inventario */}
       {isAdjustModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-[400px] rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 sm:items-start sm:pt-10 items-center overflow-y-auto p-4">
+          <div className="w-[400px] rounded-lg max-h-[90vh] overflow-y-auto bg-white p-6 shadow-xl">
             <h2 className="text-xl font-bold mb-2">Ajuste de Inventario (Captura)</h2>
             <p className="text-sm text-gray-500 mb-4">{adjustData.productName}</p>
             <form onSubmit={handleAdjustStock} className="space-y-4">
@@ -267,8 +267,8 @@ export default function InventoryPage() {
 
       {/* Modal Nuevo/Editar Producto */}
       {isAddModalOpen && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-[500px] rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 sm:items-start sm:pt-10 items-center overflow-y-auto p-4">
+          <div className="w-[500px] rounded-lg max-h-[90vh] overflow-y-auto bg-white p-6 shadow-xl">
             <h2 className="text-xl font-bold mb-4">{isEditMode ? 'Editar Producto' : 'Nuevo Producto'}</h2>
             <form onSubmit={handleSaveProduct} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

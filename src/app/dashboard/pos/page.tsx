@@ -306,8 +306,8 @@ export default function POSPage() {
     <div className="flex h-[calc(100vh-80px)] gap-6 relative">
       {/* Modal de Apertura de Caja */}
       {showOpenModal && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-96 rounded-lg bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 sm:items-start sm:pt-10 items-center overflow-y-auto p-4">
+          <div className="w-96 rounded-lg max-h-[90vh] overflow-y-auto bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center gap-3 border-b pb-4">
               <Lock className="h-6 w-6 text-red-500" />
               <h2 className="text-xl font-bold">Caja Cerrada</h2>
