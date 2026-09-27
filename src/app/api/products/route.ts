@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
-  const branchId = searchParams.get('branchId') || (session.user as any).branchId;
+  const branchId = searchParams.get('branchId') || (session.user as any)?.branchId;
   const search = searchParams.get('search');
 
   try {
@@ -22,9 +22,9 @@ export async function GET(request: Request) {
       } : undefined,
       include: {
         category: true,
-        inventories: {
+        inventories: branchId ? {
           where: { branchId },
-        }
+        } : true
       },
       orderBy: { name: 'asc' }
     });
