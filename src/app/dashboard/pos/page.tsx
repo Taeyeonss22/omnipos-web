@@ -137,7 +137,37 @@ export default function POSPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        alert(`Caja cerrada. Diferencia: $${data.difference}`);
+        
+        // Imprimir Corte Z Automáticamente
+        const localSettingsRaw = localStorage.getItem('printerSettings');
+        let localSettings = { header: 'CRIMEN SANTO', footer: '', width: '80mm', printerName: 'printer:impresora_termica' };
+        if (localSettingsRaw) localSettings = JSON.parse(localSettingsRaw);
+        
+        try {
+          await fetch('http://127.0.0.1:8080/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              folio: `CORTE-Z-${cashSession.id.slice(0, 6).toUpperCase()}`,
+              branchName: localSettings.header,
+              date: new Date().toISOString(),
+              cashier: session?.user?.name || 'Cajero',
+              items: [
+                { quantity: 1, product: 'Fondo Inicial', subtotal: cashSession.openingBalance },
+                { quantity: 1, product: 'Ventas Efectivo', subtotal: parseFloat(closingBalance) - cashSession.openingBalance }
+              ],
+              subtotal: parseFloat(closingBalance) - cashSession.openingBalance,
+              tax: 0,
+              total: parseFloat(closingBalance),
+              method: 'Z-REPORT',
+              footer: `Diferencia (Sobrante/Faltante): $${data.difference.toFixed(2)}`,
+              width: localSettings.width,
+              printerName: localSettings.printerName
+            })
+          });
+        } catch(e) { console.warn(e); }
+
+        alert(`Caja cerrada exitosamente. Diferencia: $${data.difference}`);
         setCashSession(null);
         fetchSession();
       } else {
