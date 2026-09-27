@@ -4,6 +4,31 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
 
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const branchId = (session.user as any).branchId;
+  const role = (session.user as any).role;
+
+  try {
+    const filter = (role === 'ADMIN' || !branchId) ? {} : { branchId };
+    const sales = await prisma.sale.findMany({
+      where: filter,
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+        items: { include: { product: true } },
+        payments: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    return NextResponse.json(sales);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -25,6 +25,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
   const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Caja / POS', href: '/dashboard/pos', icon: ShoppingCart, roles: ['ADMIN', 'CASHIER'] },
+    { name: 'Historial Ventas', href: '/dashboard/sales', icon: Receipt, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Inventario', href: '/dashboard/inventory', icon: Package, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Compras', href: '/dashboard/purchases', icon: Truck, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Traspasos', href: '/dashboard/transfers', icon: Truck, roles: ['ADMIN', 'MANAGER'] },
