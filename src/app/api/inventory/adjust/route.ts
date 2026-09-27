@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const branchId = (session.user as any).branchId;
+  const branchId = (session.user as any).branchId || undefined;
 
   try {
     const data = await request.json();

@@ -36,7 +36,7 @@ export default function TransfersPage() {
     try {
       const res = await fetch('/api/transfers');
       const data = await res.json();
-      setTransfers(data);
+      setTransfers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
     } finally {

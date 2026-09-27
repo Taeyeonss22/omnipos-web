@@ -35,7 +35,7 @@ export default function PurchasesPage() {
     try {
       const res = await fetch('/api/purchases');
       const data = await res.json();
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
     } finally {

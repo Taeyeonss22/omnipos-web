@@ -91,7 +91,7 @@ export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const branchId = (session.user as any).branchId;
+  const branchId = (session.user as any).branchId || undefined;
 
   try {
     const data = await request.json();

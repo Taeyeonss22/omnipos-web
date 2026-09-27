@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const branchId = (session.user as any).branchId;
+  const branchId = (session.user as any).branchId || undefined;
 
   try {
     const transfers = await prisma.transferRequest.findMany({

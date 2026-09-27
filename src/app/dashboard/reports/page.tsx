@@ -15,7 +15,7 @@ export default function ReportsPage() {
     try {
       const res = await fetch('/api/reports');
       const data = await res.json();
-      setSessions(data);
+      setSessions(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
     } finally {

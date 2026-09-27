@@ -22,7 +22,7 @@ export default function SalesHistoryPage() {
       const res = await fetch('/api/sales');
       if (res.ok) {
         const data = await res.json();
-        setSales(data);
+        setSales(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error('Error fetching sales:', error);
