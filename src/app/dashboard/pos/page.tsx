@@ -5,6 +5,7 @@ import { ShoppingCart, Search, Trash2, Lock, Unlock, Users, Wifi, WifiOff, Refre
 import { useSession } from 'next-auth/react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
+import PaymentModal from '@/components/pos/PaymentModal';
 
 interface CartItem {
   productId: string;
@@ -21,6 +22,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewTicket, setPreviewTicket] = useState<any>(null);
+  const [paymentModal, setPaymentModal] = useState<{isOpen: boolean, method: string}>({ isOpen: false, method: '' });
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Estado de Caja
@@ -193,25 +195,36 @@ export default function POSPage() {
     setCart(prev => prev.filter(item => item.productId !== productId));
   };
 
-  const handleCheckout = async (method: string) => {
+  const handleCheckoutClick = (method: string) => {
     if (cart.length === 0 || !cashSession) return;
     if (method === 'CREDIT' && !selectedCustomer) {
       alert('Debes seleccionar un cliente para cobrar a crédito.');
       return;
     }
-    // Bloqueo de ventas a crédito offline (según plan)
     if (method === 'CREDIT' && !isOnline) {
       alert('No puedes realizar ventas a crédito mientras estás sin conexión. Reconecta la red para verificar saldo.');
       return;
     }
+    setPaymentModal({ isOpen: true, method });
+  };
 
+  const processCheckout = async (method: string, details: any = {}) => {
+    setPaymentModal({ isOpen: false, method: '' });
     setIsProcessing(true);
     
+    // Función de impresión aislada
     const printTicket = (folioText: string, ticketMethod: string = method) => {
       const localSettingsRaw = localStorage.getItem('printerSettings');
       let localSettings = { header: 'CRIMEN SANTO', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
       if (localSettingsRaw) {
         localSettings = JSON.parse(localSettingsRaw);
+      }
+      
+      let finalMethod = ticketMethod;
+      if (ticketMethod === 'CARD' && details.reference) {
+        finalMethod = `TARJETA (Ref: ${details.reference})`;
+      } else if (ticketMethod === 'CASH' && details.amountGiven) {
+        finalMethod = `EFECTIVO (Recibido: $${details.amountGiven.toFixed(2)} - Cambio: $${details.change.toFixed(2)})`;
       }
 
       setPreviewTicket({
@@ -223,7 +236,7 @@ export default function POSPage() {
         subtotal,
         tax,
         total,
-        method: ticketMethod,
+        method: finalMethod,
         footer: localSettings.footer,
         width: localSettings.width,
         printerName: localSettings.printerName
@@ -463,7 +476,7 @@ export default function POSPage() {
         <div className="space-y-4">
           <button
             disabled={cart.length === 0 || isProcessing || !cashSession}
-            onClick={() => handleCheckout('CASH')}
+            onClick={() => handleCheckoutClick('CASH')}
             className="w-full rounded-md bg-green-600 py-4 text-xl font-bold transition-colors hover:bg-green-700 disabled:opacity-50"
           >
             {isProcessing ? 'Procesando...' : 'Cobrar en Efectivo'}
@@ -472,14 +485,14 @@ export default function POSPage() {
           <div className="grid grid-cols-2 gap-4">
             <button
               disabled={cart.length === 0 || isProcessing || !cashSession}
-              onClick={() => handleCheckout('CARD')}
+              onClick={() => handleCheckoutClick('CARD')}
               className="rounded-md bg-blue-600 py-3 font-semibold transition-colors hover:bg-blue-700 disabled:opacity-50"
             >
               Tarjeta
             </button>
             <button
               disabled={cart.length === 0 || isProcessing || !cashSession}
-              onClick={() => handleCheckout('CREDIT')}
+              onClick={() => handleCheckoutClick('CREDIT')}
               className="rounded-md bg-purple-600 py-3 font-semibold transition-colors hover:bg-purple-700 disabled:opacity-50"
             >
               Crédito
@@ -487,6 +500,15 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      <PaymentModal 
+        isOpen={paymentModal.isOpen}
+        method={paymentModal.method}
+        total={total}
+        customerName={customers.find(c => c.id === selectedCustomer)?.name}
+        onClose={() => setPaymentModal({ isOpen: false, method: '' })}
+        onConfirm={(method, details) => processCheckout(method, details)}
+      />
 
       <TicketPreviewModal 
         isOpen={!!previewTicket}
