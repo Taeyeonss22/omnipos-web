@@ -185,9 +185,28 @@ export default function SettingsPage() {
           
           <ul className="divide-y divide-gray-200 border rounded-md max-h-96 overflow-y-auto">
             {branches.map(branch => (
-              <li key={branch.id} className="p-4 hover:bg-gray-50">
-                <div className="font-medium text-gray-900">{branch.name}</div>
-                <div className="text-sm text-gray-500">{branch.address || 'Sin dirección registrada'}</div>
+              <li key={branch.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                <div>
+                  <div className="font-medium text-gray-900">{branch.name}</div>
+                  <div className="text-sm text-gray-500">{branch.address || 'Sin dirección registrada'}</div>
+                </div>
+                <button 
+                  onClick={async () => {
+                    const name = prompt('Nombre de la nueva caja (ej. Caja 2):');
+                    if (name) {
+                      const res = await fetch('/api/cash-registers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, branchId: branch.id })
+                      });
+                      if (res.ok) alert('Caja creada. Ve al POS para abrirla.');
+                      else alert('Error creando caja');
+                    }
+                  }}
+                  className="text-sm text-blue-600 hover:underline border border-blue-600 px-2 py-1 rounded"
+                >
+                  + Añadir Caja
+                </button>
               </li>
             ))}
           </ul>
