@@ -10,7 +10,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const branchId = (session.user as any).branchId || undefined;
+  let branchId = (session.user as any).branchId || undefined;
+  if (!branchId) {
+    const firstBranch = await prisma.branch.findFirst();
+    if (firstBranch) branchId = firstBranch.id;
+  }
 
   try {
     const data = await request.json();

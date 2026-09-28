@@ -41,6 +41,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  let branchId = (session.user as any).branchId || undefined;
+  if (!branchId) {
+    const firstBranch = await prisma.branch.findFirst();
+    if (firstBranch) branchId = firstBranch.id;
+  }
+
   try {
     const data = await request.json();
     
@@ -62,7 +68,7 @@ export async function POST(request: Request) {
         categoryId: categoryId,
         inventories: {
           create: {
-            branchId: (session.user as any).branchId,
+            branchId,
             quantity: parseInt(data.initialStock || '0', 10),
             minStock: parseInt(data.minStock || '0', 10),
             location: data.location || null
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
 
     await createAuditLog({
       userId: session.user.id,
-      branchId: (session.user as any).branchId,
+      branchId,
       action: 'CREATE_PRODUCT',
       entity: 'PRODUCT',
       entityId: newProduct.id,
@@ -91,7 +97,11 @@ export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const branchId = (session.user as any).branchId || undefined;
+  let branchId = (session.user as any).branchId || undefined;
+  if (!branchId) {
+    const firstBranch = await prisma.branch.findFirst();
+    if (firstBranch) branchId = firstBranch.id;
+  }
 
   try {
     const data = await request.json();
