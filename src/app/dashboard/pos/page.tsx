@@ -357,6 +357,15 @@ export default function POSPage() {
     alert('Modo Offline: La venta ha sido registrada en la memoria local y se sincronizará automáticamente.');
   };
 
+    const getSearchSuggestions = () => {
+    const query = barcode.trim().toLowerCase();
+    if (query.length < 2) return [];
+    return productsCatalog.filter(p => 
+      p.code.toLowerCase().includes(query) || p.name.toLowerCase().includes(query)
+    ).slice(0, 10);
+  };
+  const searchSuggestions = getSearchSuggestions();
+
   return (
     <div className="flex h-[calc(100vh-80px)] gap-6 relative">
       {/* Modal de Apertura de Caja */}
@@ -415,6 +424,28 @@ export default function POSPage() {
               className={`w-full rounded-md border-2 py-3 pl-12 pr-4 text-lg font-medium focus:outline-none disabled:opacity-50 ${isOnline ? 'border-blue-500 focus:border-blue-600' : 'border-orange-500 focus:border-orange-600 bg-orange-50'}`}
               disabled={!cashSession && isOnline}
             />
+            {searchSuggestions.length > 0 && barcode.trim().length >= 2 && (
+              <ul className="absolute z-10 w-full bg-white border border-gray-200 shadow-lg rounded-b-lg max-h-60 overflow-y-auto mt-1">
+                {searchSuggestions.map(p => (
+                  <li 
+                    key={p.id} 
+                    className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center" 
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevents input from losing focus immediately
+                      addToCart(p);
+                      setBarcode('');
+                      if (inputRef.current) inputRef.current.focus();
+                    }}
+                  >
+                    <div>
+                      <span className="block font-bold text-gray-800">{p.name}</span>
+                      <span className="text-xs text-gray-500">Cód: {p.code} | Stock: {p.inventories?.reduce((acc, inv) => acc + inv.quantity, 0) || 0}</span>
+                    </div>
+                    <span className="font-bold text-blue-600">${p.price.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </form>
           {cashSession && (
              <div className="ml-4 flex items-center gap-4">
