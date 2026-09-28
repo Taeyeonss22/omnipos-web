@@ -7,6 +7,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
 import PaymentModal from '@/components/pos/PaymentModal';
 import CloseRegisterModal from '@/components/pos/CloseRegisterModal';
+import ProductSelectionModal from '@/components/pos/ProductSelectionModal';
 
 interface CartItem {
   productId: string;
@@ -25,6 +26,7 @@ export default function POSPage() {
   const [previewTicket, setPreviewTicket] = useState<any>(null);
   const [paymentModal, setPaymentModal] = useState<{isOpen: boolean, method: string}>({ isOpen: false, method: '' });
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [selectionModal, setSelectionModal] = useState<{isOpen: boolean, matches: any[]}>({ isOpen: false, matches: [] });
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Estado de Caja
@@ -211,12 +213,16 @@ export default function POSPage() {
       p.code.toLowerCase().includes(query) || p.name.toLowerCase().includes(query)
     );
 
-    if (matches.length > 0) {
+    if (matches.length === 1) {
       addToCart(matches[0]);
+      setBarcode('');
+    } else if (matches.length > 1) {
+      setSelectionModal({ isOpen: true, matches });
+      setBarcode('');
     } else {
       alert('Producto no encontrado en el catálogo');
+      setBarcode('');
     }
-    setBarcode('');
   };
 
   const addToCart = (product: any) => {
@@ -557,6 +563,16 @@ export default function POSPage() {
         isOpen={isCloseModalOpen}
         onClose={() => setIsCloseModalOpen(false)}
         onConfirm={(total, breakdown) => processCloseRegister(total, breakdown)}
+      />
+      <ProductSelectionModal
+        isOpen={selectionModal.isOpen}
+        onClose={() => setSelectionModal({ isOpen: false, matches: [] })}
+        matches={selectionModal.matches}
+        onSelect={(product) => {
+          addToCart(product);
+          setSelectionModal({ isOpen: false, matches: [] });
+          if (inputRef.current) inputRef.current.focus();
+        }}
       />
       <TicketPreviewModal 
         isOpen={!!previewTicket}
