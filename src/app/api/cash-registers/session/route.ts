@@ -20,9 +20,14 @@ export async function GET(request: Request) {
     });
 
     if (!activeSession) {
+      let branchId = (session.user as any).branchId || undefined;
+      if (!branchId) {
+        const firstBranch = await prisma.branch.findFirst();
+        if (firstBranch) branchId = firstBranch.id;
+      }
       // Retornamos las cajas disponibles de la sucursal para poder abrir una
       const registers = await prisma.cashRegister.findMany({
-        where: { branchId: (session.user as any).branchId, isActive: true }
+        where: { branchId, isActive: true }
       });
       return NextResponse.json({ activeSession: null, availableRegisters: registers });
     }
