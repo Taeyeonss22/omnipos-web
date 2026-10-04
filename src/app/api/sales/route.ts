@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
   try {
     const data = await request.json();
-    const { items, paymentMethod, customerId, sessionId } = data; 
+    const { items, paymentMethod, customerId, sessionId, status, paymentAmount } = data; 
     // items: Array of { productId, quantity, unitPrice, subtotal }
     
     if (!items || items.length === 0) {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
           tax,
           discount: 0,
           total,
-          status: 'COMPLETED',
+          status: status || 'COMPLETED',
           items: {
             create: items.map((item: any) => ({
               productId: item.product?.id || item.productId,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
           payments: {
             create: [{
               method: paymentMethod || 'CASH',
-              amount: total,
+              amount: paymentAmount !== undefined ? paymentAmount : total,
               sessionId,
             }]
           }

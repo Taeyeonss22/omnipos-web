@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
 import PaymentModal from '@/components/pos/PaymentModal';
+import LayawayModal from '@/components/pos/LayawayModal';
 import CloseRegisterModal from '@/components/pos/CloseRegisterModal';
 import ProductSelectionModal from '@/components/pos/ProductSelectionModal';
 
@@ -25,6 +26,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewTicket, setPreviewTicket] = useState<any>(null);
+  const [isLayawayModalOpen, setIsLayawayModalOpen] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{isOpen: boolean, method: string}>({ isOpen: false, method: '' });
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [selectionModal, setSelectionModal] = useState<{isOpen: boolean, matches: any[]}>({ isOpen: false, matches: [] });
@@ -260,6 +262,39 @@ export default function POSPage() {
       return;
     }
     setPaymentModal({ isOpen: true, method });
+  };
+
+
+  const handleLayawayConfirm = async (customerId: string, deposit: number, method: string) => {
+    setIsLayawayModalOpen(false);
+    setIsProcessing(true);
+    
+    try {
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          items: cart, 
+          paymentMethod: method, 
+          sessionId: cashSession.id,
+          customerId: customerId,
+          status: 'LAYAWAY',
+          paymentAmount: deposit
+        }),
+      });
+      
+      if (!res.ok) throw new Error('Error al crear apartado');
+      const sale = await res.json();
+      setCart([]);
+      setSelectedCustomer('');
+      alert(`Apartado creado exitosamente. Folio: ${sale.folio}`);
+    } catch (error) {
+      console.error(error);
+      alert('Hubo un error al crear el apartado.');
+    } finally {
+      setIsProcessing(false);
+      inputRef.current?.focus();
+    }
   };
 
   const processCheckout = async (method: string, details: any = {}) => {
@@ -570,7 +605,7 @@ export default function POSPage() {
             {isProcessing ? 'Procesando...' : 'Cobrar en Efectivo'}
           </button>
           
-          <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
             <button
               disabled={cart.length === 0 || isProcessing || !cashSession}
               onClick={() => handleCheckoutClick('CARD')}
@@ -580,10 +615,13 @@ export default function POSPage() {
             </button>
             <button
               disabled={cart.length === 0 || isProcessing || !cashSession}
-              onClick={() => handleCheckoutClick('CREDIT')}
-              className="rounded-md bg-purple-600 py-3 font-semibold transition-colors hover:bg-purple-700 disabled:opacity-50"
+              onClick={() => {
+                if (!cashSession && isOnline) return alert('Debes abrir una caja primero');
+                setIsLayawayModalOpen(true);
+              }}
+              className="rounded-md bg-orange-600 py-3 font-semibold transition-colors hover:bg-orange-700 disabled:opacity-50"
             >
-              Crédito
+              Apartar
             </button>
           </div>
         </div>
