@@ -56,6 +56,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error(error);
-    return NextResponse.json({ error: 'Error al eliminar producto', details: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'CRASH: ' + error.message }, { status: 500 });
   }
 }
