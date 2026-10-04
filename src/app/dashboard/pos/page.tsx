@@ -246,7 +246,7 @@ export default function POSPage() {
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.productId !== productId));
+    setCart(prev => prev.filter(item => item.product.id !== productId));
   };
 
   const handleCheckoutClick = (method: string) => {
@@ -510,16 +510,16 @@ export default function POSPage() {
               </thead>
               <tbody>
                 {cart.map((item) => (
-                  <tr key={item.productId} className="border-b">
+                  <tr key={item.product?.id || Math.random()} className="border-b">
                     <td className="py-4">
-                      <div className="font-medium text-gray-900">{item.name}</div>
-                      <div className="text-xs text-gray-500">{item.code}</div>
+                      <div className="font-medium text-gray-900">{item.product?.name}</div>
+                      <div className="text-xs text-gray-500">{item.product?.code}</div>
                     </td>
                     <td className="py-4 text-center font-bold text-blue-600">{item.quantity}</td>
-                    <td className="py-4 text-right">${item.unitPrice.toFixed(2)}</td>
+                    <td className="py-4 text-right">${(item.product?.price || 0).toFixed(2)}</td>
                     <td className="py-4 text-right font-medium">${item.subtotal.toFixed(2)}</td>
                     <td className="py-4 text-right">
-                      <button onClick={() => removeFromCart(item.productId)} className="text-red-500 hover:text-red-700">
+                      <button onClick={() => removeFromCart(item.product?.id)} className="text-red-500 hover:text-red-700">
                         <Trash2 className="h-5 w-5" />
                       </button>
                     </td>

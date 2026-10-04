@@ -75,9 +75,9 @@ export async function POST(request: Request) {
           status: 'COMPLETED',
           items: {
             create: items.map((item: any) => ({
-              productId: item.productId,
+              productId: item.product?.id || item.productId,
               quantity: item.quantity,
-              unitPrice: item.unitPrice,
+              unitPrice: item.product?.price || item.unitPrice,
               subtotal: item.subtotal,
             })),
           },
@@ -98,11 +98,11 @@ export async function POST(request: Request) {
       // 2. Descontar Inventario
       for (const item of items) {
         const inventory = await tx.inventory.findUnique({
-          where: { branchId_productId: { branchId, productId: item.productId } }
+          where: { branchId_productId: { branchId, productId: item.product?.id || item.productId } }
         });
 
         if (!inventory || inventory.quantity < item.quantity) {
-          throw new Error(`Stock insuficiente para el producto ID: ${item.productId}`);
+          throw new Error(`Stock insuficiente para el producto ID: ${item.product?.id || item.productId}`);
         }
 
         await tx.inventory.update({
