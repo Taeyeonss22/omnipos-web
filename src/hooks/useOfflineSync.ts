@@ -45,7 +45,7 @@ export function useOfflineSync() {
   const addToOfflineQueue = (sale: Omit<PendingSale, 'id' | 'timestamp'>) => {
     const newSale: PendingSale = {
       ...sale,
-      id: crypto.randomUUID(),
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2),
       timestamp: Date.now()
     };
     setPendingQueue(prev => [...prev, newSale]);

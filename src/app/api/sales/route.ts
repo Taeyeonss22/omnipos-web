@@ -38,11 +38,15 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = session.user.id;
-  const branchId = (session.user as any).branchId || undefined;
+  let branchId = (session.user as any).branchId || undefined;
+  if (!branchId) {
+    const firstBranch = await prisma.branch.findFirst();
+    if (firstBranch) branchId = firstBranch.id;
+  }
 
   try {
     const data = await request.json();
-    const { items, paymentMethod, customerId } = data; 
+    const { items, paymentMethod, customerId, sessionId } = data; 
     // items: Array of { productId, quantity, unitPrice, subtotal }
     
     if (!items || items.length === 0) {
@@ -63,6 +67,7 @@ export async function POST(request: Request) {
           branchId,
           userId,
           customerId,
+          sessionId,
           subtotal,
           tax,
           discount: 0,

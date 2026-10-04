@@ -283,7 +283,7 @@ export default function POSPage() {
         branchName: localSettings.header,
         date: new Date().toISOString(),
         cashier: session?.user?.name,
-        items: cart.map(i => ({ quantity: i.quantity, product: i.name, subtotal: i.subtotal })),
+        items: cart.map((i: any) => ({ quantity: i.quantity, product: i.product?.name, subtotal: i.subtotal })),
         subtotal,
         tax,
         total,
