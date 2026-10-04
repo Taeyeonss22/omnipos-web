@@ -8,7 +8,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const saleId = params.id;
+  const saleId = (await Promise.resolve(params)).id;
 
   try {
     const data = await request.json();

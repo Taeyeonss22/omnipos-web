@@ -10,7 +10,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ error: 'No tienes permisos para eliminar productos' }, { status: 403 });
   }
 
-  const productId = params.id;
+  const productId = (await Promise.resolve(params)).id;
 
   try {
     const product = await prisma.product.findUnique({

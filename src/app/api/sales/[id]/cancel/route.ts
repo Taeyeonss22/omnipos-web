@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Solo administradores o gerentes pueden cancelar ventas' }, { status: 403 });
   }
 
-  const saleId = params.id;
+  const saleId = (await Promise.resolve(params)).id;
 
   try {
     const sale = await prisma.sale.findUnique({
