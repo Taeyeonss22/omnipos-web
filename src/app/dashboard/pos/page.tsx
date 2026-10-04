@@ -210,9 +210,12 @@ export default function POSPage() {
     if (!query) return;
 
     // Búsqueda en caché local (instantánea y funciona offline)
-    const matches = productsCatalog.filter(p => 
-      p.code.toLowerCase().includes(query) || p.name.toLowerCase().includes(query)
-    );
+    const matches = productsCatalog.filter(p => {
+      if (!p) return false;
+      const codeStr = p.code ? String(p.code).toLowerCase() : '';
+      const nameStr = p.name ? String(p.name).toLowerCase() : '';
+      return codeStr.includes(query) || nameStr.includes(query);
+    });
 
     if (matches.length === 1) {
       addToCart(matches[0]);
@@ -356,9 +359,12 @@ export default function POSPage() {
     const getSearchSuggestions = () => {
     const query = barcode.trim().toLowerCase();
     if (query.length < 2) return [];
-    return productsCatalog.filter(p => 
-      p.code.toLowerCase().includes(query) || p.name.toLowerCase().includes(query)
-    ).slice(0, 10);
+    return productsCatalog.filter(p => {
+      if (!p) return false;
+      const codeStr = p.code ? String(p.code).toLowerCase() : '';
+      const nameStr = p.name ? String(p.name).toLowerCase() : '';
+      return codeStr.includes(query) || nameStr.includes(query);
+    }).slice(0, 10);
   };
   const searchSuggestions = getSearchSuggestions();
 
