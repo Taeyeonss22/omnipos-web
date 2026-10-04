@@ -82,7 +82,7 @@ export async function PUT(request: Request) {
 
     const activeSession = await prisma.cashRegisterSession.findUnique({
       where: { id: sessionId },
-      include: { sales: true }
+      include: { sales: { include: { payments: true } }, payments: true, creditPayments: true }
     });
 
     if (!activeSession || activeSession.status === 'CLOSED') {
@@ -90,7 +90,18 @@ export async function PUT(request: Request) {
     }
 
     // Calcular ventas totales en efectivo (simplificado)
-    const totalCashSales = activeSession.sales.filter(s => s.status !== 'CANCELLED').reduce((acc, sale) => acc + Number(sale.total), 0);
+    // Calcular efectivo usando pagos reales en lugar del total del ticket (para soportar apartados)
+    let totalCashSales = 0;
+    
+    // Si hay pagos directos registrados en la sesion (nuevo sistema)
+    if (activeSession.payments.length > 0 || activeSession.creditPayments.length > 0) {
+      const directPayments = activeSession.payments.filter(p => p.method === 'CASH').reduce((acc, p) => acc + Number(p.amount), 0);
+      const creditCash = activeSession.creditPayments.filter(p => p.method === 'CASH').reduce((acc, p) => acc + Number(p.amount), 0);
+      totalCashSales = directPayments + creditCash;
+    } else {
+      // Sistema viejo: sumar el total de la venta si el metodo era CASH (asumido si no hay pagos)
+      totalCashSales = activeSession.sales.filter(s => s.status !== 'CANCELLED').reduce((acc, sale) => acc + Number(sale.total), 0);
+    }
     const expectedBalance = Number(activeSession.openingBalance) + totalCashSales;
     const difference = parseFloat(closingBalance) - expectedBalance;
 

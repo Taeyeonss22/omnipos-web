@@ -85,6 +85,7 @@ export async function POST(request: Request) {
             create: [{
               method: paymentMethod || 'CASH',
               amount: total,
+              sessionId,
             }]
           }
         },
