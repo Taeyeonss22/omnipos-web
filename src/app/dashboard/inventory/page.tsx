@@ -220,6 +220,26 @@ export default function InventoryPage() {
     }
   };
 
+
+  const handleDeleteProduct = async (product: any) => {
+    if (!confirm(`¿Estás seguro que deseas ELIMINAR el artículo "${product.name}"? Esta acción no se puede deshacer.`)) return;
+    
+    try {
+      const res = await fetch(`/api/products/${product.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert('Artículo eliminado correctamente.');
+        fetchProducts();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error de red al intentar eliminar.');
+    }
+  };
+
   const openAdjustModal = (product: Product, stock: number) => {
     setAdjustData({
       productId: product.id,
@@ -434,6 +454,8 @@ export default function InventoryPage() {
                         <button onClick={() => openAdjustModal(product, stock)} className="text-purple-600 font-medium hover:underline">Ajustar (Captura)</button>
                         <span className="text-gray-300">|</span>
                         <button onClick={() => openEditModal(product)} className="text-blue-600 hover:underline">Editar</button>
+                        <span className="text-gray-300">|</span>
+                        <button onClick={() => handleDeleteProduct(product)} className="text-red-600 hover:underline">Eliminar</button>
                       </td>
                     </tr>
                   );
