@@ -22,7 +22,8 @@ export async function GET(request: Request) {
       include: {
         user: { select: { firstName: true, lastName: true } },
         items: { include: { product: true } },
-        payments: true
+        payments: true,
+        customer: true
       },
       orderBy: { createdAt: 'desc' },
       take: 50
