@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Receipt, Search, Printer, Eye } from 'lucide-react';
+import { Receipt, Search, Printer, Eye, Ban } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
 
@@ -28,6 +28,23 @@ export default function SalesHistoryPage() {
       console.error('Error fetching sales:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCancelSale = async (sale: any) => {
+    if (!confirm('¿Estás seguro de que deseas cancelar esta venta? Los productos regresarán al inventario.')) return;
+    try {
+      const res = await fetch(`/api/sales/${sale.id}/cancel`, { method: 'POST' });
+      if (res.ok) {
+        alert('Venta cancelada exitosamente.');
+        fetchSales();
+      } else {
+        const data = await res.json();
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error cancelando venta');
     }
   };
 
@@ -151,6 +168,15 @@ export default function SalesHistoryPage() {
                         <Eye className="h-4 w-4" />
                         Ver Ticket
                       </button>
+                      {sale.status === 'COMPLETED' && (
+                        <button 
+                          onClick={() => handleCancelSale(sale)}
+                          className="ml-2 inline-flex items-center gap-1 rounded bg-red-50 px-3 py-1 text-sm font-medium text-red-700 hover:bg-red-100"
+                        >
+                          <Ban className="h-4 w-4" />
+                          Cancelar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

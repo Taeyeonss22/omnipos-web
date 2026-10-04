@@ -28,7 +28,7 @@ export default function PaymentModal({ isOpen, onClose, onConfirm, method, total
         <div className={`flex items-center gap-3 p-4 text-white ${method === 'CASH' ? 'bg-green-600' : method === 'CARD' ? 'bg-blue-600' : 'bg-purple-600'}`}>
           {method === 'CASH' ? <Banknote className="w-6 h-6" /> : method === 'CARD' ? <CreditCard className="w-6 h-6" /> : <DollarSign className="w-6 h-6" />}
           <h2 className="text-xl font-bold flex-1">
-            {method === 'CASH' ? 'Cobro en Efectivo' : method === 'CARD' ? 'Cobro con Tarjeta' : 'Cobro a Crédito'}
+            {total < 0 ? 'Devolución' : method === 'CASH' ? 'Cobro en Efectivo' : method === 'CARD' ? 'Cobro con Tarjeta' : 'Cobro a Crédito'}
           </h2>
           <button onClick={onClose} className="hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors">
             <X className="w-6 h-6" />
@@ -37,7 +37,7 @@ export default function PaymentModal({ isOpen, onClose, onConfirm, method, total
 
         <div className="p-6">
           <div className="text-center mb-6">
-            <p className="text-sm text-gray-500 font-medium">Total a Cobrar</p>
+            <p className="text-sm text-gray-500 font-medium">{total < 0 ? 'Total a Devolver al Cliente' : 'Total a Cobrar'}</p>
             <p className="text-4xl font-black text-gray-900">${total.toFixed(2)}</p>
             {customerName && <p className="text-sm text-blue-600 mt-1">Cliente: {customerName}</p>}
           </div>
@@ -114,7 +114,7 @@ export default function PaymentModal({ isOpen, onClose, onConfirm, method, total
             onClick={() => onConfirm(method, { amountGiven: numericAmount, change, reference })}
             className="flex-1 py-3 bg-gray-900 rounded-lg text-white font-bold hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Confirmar Cobro
+            {total < 0 ? 'Confirmar Devolución' : 'Confirmar Cobro'}
           </button>
         </div>
 

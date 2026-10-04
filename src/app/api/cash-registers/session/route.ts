@@ -90,7 +90,7 @@ export async function PUT(request: Request) {
     }
 
     // Calcular ventas totales en efectivo (simplificado)
-    const totalCashSales = activeSession.sales.reduce((acc, sale) => acc + Number(sale.total), 0);
+    const totalCashSales = activeSession.sales.filter(s => s.status !== 'CANCELLED').reduce((acc, sale) => acc + Number(sale.total), 0);
     const expectedBalance = Number(activeSession.openingBalance) + totalCashSales;
     const difference = parseFloat(closingBalance) - expectedBalance;
 

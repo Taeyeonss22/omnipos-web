@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     const subtotal = items.reduce((acc: number, item: any) => acc + item.subtotal, 0);
-    const tax = subtotal * 0.16; // Asumiendo IVA 16% por defecto para el ejemplo
+    const tax = 0;
     const total = subtotal + tax;
     const folio = `V-${Date.now().toString().slice(-6)}`;
 

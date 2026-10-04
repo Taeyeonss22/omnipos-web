@@ -21,6 +21,7 @@ interface CartItem {
 export default function POSPage() {
   const { data: session } = useSession();
   const [barcode, setBarcode] = useState('');
+  const [isReturnMode, setIsReturnMode] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewTicket, setPreviewTicket] = useState<any>(null);
@@ -225,25 +226,20 @@ export default function POSPage() {
     }
   };
 
-  const addToCart = (product: any) => {
-    setCart((prev) => {
-      const existing = prev.find(item => item.productId === product.id);
+    const addToCart = (product: any) => {
+    const qtyChange = isReturnMode ? -1 : 1;
+    setCart(prev => {
+      const existing = prev.find((item: any) => item.product.id === product.id);
       if (existing) {
-        return prev.map(item => 
-          item.productId === product.id 
-            ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
+        return prev.map((item: any) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + qtyChange, subtotal: (item.quantity + qtyChange) * product.price }
             : item
         );
       }
-      return [...prev, {
-        productId: product.id,
-        code: product.code,
-        name: product.name,
-        quantity: 1,
-        unitPrice: product.price,
-        subtotal: product.price
-      }];
+      return [...prev, { product, quantity: qtyChange, subtotal: qtyChange * product.price }];
     });
+    // Si queremos apagarlo después de cada uso podemos hacerlo aquí, pero mejor dejarlo manual
   };
 
   const removeFromCart = (productId: string) => {
@@ -413,6 +409,13 @@ export default function POSPage() {
       {/* Panel Izquierdo: Buscador y Carrito */}
       <div className="flex flex-1 flex-col rounded-lg bg-white shadow">
         <div className="flex items-center justify-between border-b p-4">
+                    <button 
+            type="button"
+            onClick={() => setIsReturnMode(!isReturnMode)}
+            className={`mr-3 flex-shrink-0 rounded-md px-3 py-3 text-sm font-bold transition-colors ${isReturnMode ? 'bg-red-600 text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+          >
+            {isReturnMode ? '¡MODO DEVOLUCIÓN ACTIVO!' : 'Modo Normal'}
+          </button>
           <form onSubmit={handleBarcodeSubmit} className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 text-gray-400" />
             <input
