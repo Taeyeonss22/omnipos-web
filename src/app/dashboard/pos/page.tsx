@@ -652,6 +652,14 @@ export default function POSPage() {
           if (inputRef.current) inputRef.current.focus();
         }}
       />
+      <LayawayModal 
+        isOpen={isLayawayModalOpen} 
+        onClose={() => setIsLayawayModalOpen(false)} 
+        onConfirm={handleLayawayConfirm} 
+        total={total} 
+        customers={customers} 
+        selectedCustomerId={selectedCustomer} 
+      />
       <TicketPreviewModal 
         isOpen={!!previewTicket}
         onClose={() => setPreviewTicket(null)}
