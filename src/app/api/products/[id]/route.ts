@@ -18,7 +18,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       include: {
         inventories: true,
         saleItems: { take: 1 },
-        purchaseItems: { take: 1 }
+        purchaseOrderItems: { take: 1 },
+        transferItems: { take: 1 }
       }
     });
 
@@ -27,9 +28,9 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Proteger integridad referencial: No borrar si ya tiene ventas o compras
-    if (product.saleItems.length > 0 || product.purchaseItems.length > 0) {
+    if (product.saleItems.length > 0 || product.purchaseOrderItems.length > 0 || product.transferItems.length > 0) {
       return NextResponse.json({ 
-        error: 'No se puede eliminar porque este artículo ya tiene historial de ventas o compras. Te recomendamos desactivarlo (función próximamente) o poner su stock en 0.' 
+        error: 'No se puede eliminar porque este artículo ya tiene historial de ventas, compras o traspasos. Te recomendamos desactivarlo (función próximamente) o poner su stock en 0.' 
       }, { status: 400 });
     }
 
