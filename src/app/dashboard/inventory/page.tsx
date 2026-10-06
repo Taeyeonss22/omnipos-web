@@ -117,6 +117,31 @@ export default function InventoryPage() {
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustData, setAdjustData] = useState({ productId: '', productName: '', currentStock: 0, newQuantity: '', reason: '' });
 
+
+  const handleExportCSV = () => {
+    if (!products || products.length === 0) return alert('No hay productos para exportar');
+    
+    const headers = ['Codigo', 'Nombre', 'Precio', 'Costo', 'Categoria', 'Stock'];
+    const rows = products.map(p => [
+      p.code,
+      `"${p.name.replace(/"/g, '""')}"`,
+      p.price,
+      p.cost,
+      p.category?.name || 'General',
+      p.inventories?.[0]?.quantity || 0
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `catalogo_bartender_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -266,7 +291,15 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Nuevo Stock Físico Real</label>
-                <input type="number" required value={adjustData.newQuantity} onChange={e => setAdjustData({...adjustData, newQuantity: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black text-lg font-bold" />
+      <button 
+            onClick={handleExportCSV} 
+            className="flex items-center gap-2 rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Exportar Bartender
+          </button>
+          
+          <input type="number" required value={adjustData.newQuantity} onChange={e => setAdjustData({...adjustData, newQuantity: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black text-lg font-bold" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Motivo del ajuste</label>
