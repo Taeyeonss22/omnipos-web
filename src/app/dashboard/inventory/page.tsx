@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
-import { Package, Plus, Search, Upload, Printer } from 'lucide-react';
+import { Package, Plus, Search, Upload, Printer, Download } from 'lucide-react';
 
 interface Product {
   id: string;
