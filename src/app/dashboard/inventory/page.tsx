@@ -291,15 +291,7 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Nuevo Stock Físico Real</label>
-      <button 
-            onClick={handleExportCSV} 
-            className="flex items-center gap-2 rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            Exportar Bartender
-          </button>
-          
-          <input type="number" required value={adjustData.newQuantity} onChange={e => setAdjustData({...adjustData, newQuantity: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black text-lg font-bold" />
+      <input type="number" required value={adjustData.newQuantity} onChange={e => setAdjustData({...adjustData, newQuantity: e.target.value})} className="mt-1 w-full rounded-md border border-gray-300 p-2 text-black text-lg font-bold" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Motivo del ajuste</label>
@@ -414,6 +406,14 @@ export default function InventoryPage() {
             ref={fileInputRef}
             onChange={handleImportCSV} 
           />
+          <button 
+            onClick={handleExportCSV} 
+            className="flex items-center gap-2 rounded-md bg-green-50 px-4 py-2 text-sm font-medium text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Exportar Bartender
+          </button>
+          
           <button 
             onClick={() => fileInputRef.current?.click()} 
             className="flex items-center gap-2 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
