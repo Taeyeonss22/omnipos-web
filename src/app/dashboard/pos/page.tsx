@@ -474,7 +474,7 @@ export default function POSPage() {
       {/* Panel Izquierdo: Buscador y Carrito */}
       <div className="flex flex-1 flex-col rounded-lg bg-white shadow">
         <div className="flex items-center justify-between border-b p-4">
-                    <button 
+          <button 
             type="button"
             onClick={() => setIsReturnMode(!isReturnMode)}
             className={`mr-3 flex-shrink-0 rounded-md px-3 py-3 text-sm font-bold transition-colors ${isReturnMode ? 'bg-red-600 text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
@@ -540,6 +540,12 @@ export default function POSPage() {
                <span className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                  <Unlock className="h-4 w-4" /> {cashSession.register.name}
                </span>
+               <button
+                 onClick={() => setIsMovementModalOpen(true)}
+                 className="text-sm font-medium text-blue-600 hover:text-blue-800 underline mr-4 flex items-center gap-1"
+               >
+                 <ArrowDownUp className="w-3 h-3"/> Egresos/Ingresos
+               </button>
                <button 
                  onClick={handleCloseRegisterClick}
                  className="text-sm font-medium text-red-600 hover:text-red-800 underline"
