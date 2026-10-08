@@ -82,7 +82,7 @@ export async function PUT(request: Request) {
 
     const activeSession = await prisma.cashRegisterSession.findUnique({
       where: { id: sessionId },
-      include: { sales: { include: { payments: true } }, payments: true, creditPayments: true }
+      include: { sales: { include: { payments: true } }, payments: true, creditPayments: true, movements: true }
     });
 
     if (!activeSession || activeSession.status === 'CLOSED') {
@@ -102,7 +102,9 @@ export async function PUT(request: Request) {
       // Sistema viejo: sumar el total de la venta si el metodo era CASH (asumido si no hay pagos)
       totalCashSales = activeSession.sales.filter(s => s.status !== 'CANCELLED').reduce((acc, sale) => acc + Number(sale.total), 0);
     }
-    const expectedBalance = Number(activeSession.openingBalance) + totalCashSales;
+        const totalIncomes = activeSession.movements.filter(m => m.type === 'IN').reduce((acc, m) => acc + m.amount, 0);
+    const totalExpenses = activeSession.movements.filter(m => m.type === 'OUT').reduce((acc, m) => acc + m.amount, 0);
+    const expectedBalance = Number(activeSession.openingBalance) + totalCashSales + totalIncomes - totalExpenses;
     const difference = parseFloat(closingBalance) - expectedBalance;
 
     const closedSession = await prisma.cashRegisterSession.update({

@@ -216,6 +216,7 @@ model CashRegisterSession {
   sales          Sale[]
   payments       Payment[]
   creditPayments CreditPayment[] @relation("CreditPayments")
+  CashMovement   CashMovement[]
 }
 
 model Supplier {
@@ -296,4 +297,14 @@ model AuditLog {
   details  String // JSON string with before/after state
 
   createdAt DateTime @default(now())
+}
+
+model CashMovement {
+  id        String              @id @default(uuid())
+  type      String // "IN" (Ingreso), "OUT" (Retiro/Gasto)
+  amount    Float
+  reason    String
+  sessionId String
+  session   CashRegisterSession @relation(fields: [sessionId], references: [id])
+  createdAt DateTime            @default(now())
 }

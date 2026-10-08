@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ShoppingCart, Search, Trash2, Lock, Unlock, Users, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, Lock, Unlock, Users, Wifi, WifiOff, RefreshCw, ArrowDownUp } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import TicketPreviewModal from '@/components/pos/TicketPreviewModal';
@@ -29,6 +29,8 @@ export default function POSPage() {
   const [isLayawayModalOpen, setIsLayawayModalOpen] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{isOpen: boolean, method: string}>({ isOpen: false, method: '' });
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
+  const [movementForm, setMovementForm] = useState({ type: 'OUT', amount: '', reason: '' });
   const [selectionModal, setSelectionModal] = useState<{isOpen: boolean, matches: any[]}>({ isOpen: false, matches: [] });
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -245,6 +247,28 @@ export default function POSPage() {
       return [...prev, { product, quantity: qtyChange, subtotal: qtyChange * product.price }];
     });
     // Si queremos apagarlo después de cada uso podemos hacerlo aquí, pero mejor dejarlo manual
+  };
+
+
+  const handleMovementSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!movementForm.amount || !movementForm.reason) return alert('Completa todos los campos');
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/cash-registers/movements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(movementForm)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      alert(movementForm.type === 'OUT' ? 'Retiro registrado' : 'Ingreso registrado');
+      setIsMovementModalOpen(false);
+      setMovementForm({ type: 'OUT', amount: '', reason: '' });
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const removeFromCart = (productId: string) => {
@@ -660,6 +684,51 @@ export default function POSPage() {
         customers={customers} 
         selectedCustomerId={selectedCustomer} 
       />
+
+      {isMovementModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Movimiento de Caja</h2>
+            <form onSubmit={handleMovementSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tipo de Movimiento</label>
+                <select 
+                  value={movementForm.type} 
+                  onChange={e => setMovementForm({...movementForm, type: e.target.value})}
+                  className="mt-1 w-full rounded-md border border-gray-300 p-2"
+                >
+                  <option value="OUT">Retiro / Egreso (Gasto)</option>
+                  <option value="IN">Ingreso (Fondo extra)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Monto</label>
+                <input 
+                  type="number" step="0.01" required
+                  value={movementForm.amount}
+                  onChange={e => setMovementForm({...movementForm, amount: e.target.value})}
+                  className="mt-1 w-full rounded-md border border-gray-300 p-2 font-bold text-lg"
+                  placeholder="$0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Concepto / Motivo</label>
+                <input 
+                  type="text" required
+                  value={movementForm.reason}
+                  onChange={e => setMovementForm({...movementForm, reason: e.target.value})}
+                  className="mt-1 w-full rounded-md border border-gray-300 p-2"
+                  placeholder="Ej. Pago proveedor agua"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setIsMovementModalOpen(false)} className="flex-1 rounded-md bg-gray-100 py-2 text-gray-700 font-bold hover:bg-gray-200">Cancelar</button>
+                <button type="submit" disabled={isProcessing} className="flex-1 rounded-md bg-blue-600 py-2 text-white font-bold hover:bg-blue-700 disabled:opacity-50">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       <TicketPreviewModal 
         isOpen={!!previewTicket}
         onClose={() => setPreviewTicket(null)}
