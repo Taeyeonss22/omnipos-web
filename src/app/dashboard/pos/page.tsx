@@ -197,10 +197,12 @@ export default function POSPage() {
         setCashSession(null);
         fetchSession();
       } else {
-        alert('Error al cerrar la caja: ' + (data.error || ''));
+        const errData = await res.json();
+        alert('Error al cerrar la caja: ' + (errData.error || ''));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      alert('Error crítico: ' + error.message);
     }
   };
 
