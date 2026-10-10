@@ -197,7 +197,7 @@ export default function POSPage() {
         setCashSession(null);
         fetchSession();
       } else {
-        alert('Error al cerrar la caja');
+        alert('Error al cerrar la caja: ' + (data.error || ''));
       }
     } catch (error) {
       console.error(error);

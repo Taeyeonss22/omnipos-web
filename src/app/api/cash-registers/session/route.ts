@@ -119,6 +119,6 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(closedSession);
   } catch (error) {
-    return NextResponse.json({ error: 'Error closing session' }, { status: 500 });
+    return NextResponse.json({ error: 'Error closing session: ' + (error.message || String(error)) }, { status: 500 });
   }
 }
