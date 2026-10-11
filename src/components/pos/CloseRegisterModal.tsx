@@ -9,7 +9,6 @@ interface CloseRegisterModalProps {
 }
 
 export default function CloseRegisterModal({ isOpen, onClose, onConfirm, errorMsg }: CloseRegisterModalProps) {
-  const [errorMsg, setErrorMsg] = useState("");
   const [denominations, setDenominations] = useState({
     b1000: 0,
     b500: 0,
@@ -122,7 +121,6 @@ export default function CloseRegisterModal({ isOpen, onClose, onConfirm, errorMs
           </button>
         </div>
         {errorMsg && <div className="p-4 bg-red-100 text-red-700 text-center font-bold">{errorMsg}</div>}
-        </div>
 
       </div>
     </div>
