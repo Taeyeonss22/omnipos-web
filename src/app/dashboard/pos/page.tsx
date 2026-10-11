@@ -29,6 +29,7 @@ export default function POSPage() {
   const [isLayawayModalOpen, setIsLayawayModalOpen] = useState(false);
   const [paymentModal, setPaymentModal] = useState<{isOpen: boolean, method: string}>({ isOpen: false, method: '' });
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [closeErrorMsg, setCloseErrorMsg] = useState("");
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
   const [movementForm, setMovementForm] = useState({ type: 'OUT', amount: '', reason: '' });
   const [selectionModal, setSelectionModal] = useState<{isOpen: boolean, matches: any[]}>({ isOpen: false, matches: [] });
@@ -134,10 +135,11 @@ export default function POSPage() {
   const handleCloseRegisterClick = () => {
     if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
     if (pendingCount > 0) return alert('Aún tienes ventas pendientes de sincronizar. Espera a que termine antes de cerrar.');
-    setIsCloseModalOpen(true);
+    setIsCloseModalOpen(true); setCloseErrorMsg("");
   };
 
   const processCloseRegister = async (totalAmount: number, breakdown: any) => {
+    alert('Intentando procesar el corte con Vercel...');
     if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
     if (pendingCount > 0) return alert('Aún tienes ventas pendientes de sincronizar. Espera a que termine antes de cerrar.');
 
@@ -198,11 +200,11 @@ export default function POSPage() {
         fetchSession();
       } else {
         const errData = await res.json();
-        alert('Error al cerrar la caja: ' + (errData.error || ''));
+        setCloseErrorMsg('Error al cerrar la caja: ' + (errData.error || ''));
       }
     } catch (error: any) {
       console.error(error);
-      alert('Error crítico: ' + error.message);
+      setCloseErrorMsg('Error crítico: ' + error.message);
     }
   };
 
@@ -670,6 +672,7 @@ export default function POSPage() {
 
       
       <CloseRegisterModal
+        errorMsg={closeErrorMsg}
         isOpen={isCloseModalOpen}
         onClose={() => setIsCloseModalOpen(false)}
         onConfirm={(total, breakdown) => processCloseRegister(total, breakdown)}

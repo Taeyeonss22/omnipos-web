@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { X, Calculator } from 'lucide-react';
 
 interface CloseRegisterModalProps {
+  errorMsg?: string;
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (total: number, breakdown: any) => void;
 }
 
-export default function CloseRegisterModal({ isOpen, onClose, onConfirm }: CloseRegisterModalProps) {
+export default function CloseRegisterModal({ isOpen, onClose, onConfirm, errorMsg }: CloseRegisterModalProps) {
+  const [errorMsg, setErrorMsg] = useState("");
   const [denominations, setDenominations] = useState({
     b1000: 0,
     b500: 0,
@@ -118,6 +120,8 @@ export default function CloseRegisterModal({ isOpen, onClose, onConfirm }: Close
           >
             Realizar Corte
           </button>
+        </div>
+        {errorMsg && <div className="p-4 bg-red-100 text-red-700 text-center font-bold">{errorMsg}</div>}
         </div>
 
       </div>

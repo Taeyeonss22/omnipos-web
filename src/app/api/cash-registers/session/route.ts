@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ activeSession });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: 'Error fetching session' }, { status: 500 });
   }
 }
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(newSession, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: 'Error opening session' }, { status: 500 });
   }
 }
@@ -118,7 +118,7 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json(closedSession);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: 'Error closing session: ' + (error.message || String(error)) }, { status: 500 });
   }
 }
