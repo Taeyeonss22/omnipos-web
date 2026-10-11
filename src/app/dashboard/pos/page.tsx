@@ -139,7 +139,6 @@ export default function POSPage() {
   };
 
   const processCloseRegister = async (totalAmount: number, breakdown: any) => {
-    alert('Intentando procesar el corte con Vercel...');
     if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
     if (pendingCount > 0) return alert('Aún tienes ventas pendientes de sincronizar. Espera a que termine antes de cerrar.');
 
