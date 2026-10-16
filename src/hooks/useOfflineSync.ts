@@ -51,8 +51,13 @@ export function useOfflineSync() {
     setPendingQueue(prev => [...prev, newSale]);
   };
 
-  const syncQueue = useCallback(async () => {
-    if (!isOnline || pendingQueue.length === 0 || isSyncing) return;
+  const clearQueue = () => {
+    setPendingQueue([]);
+    localStorage.removeItem('omnipos_offline_sales');
+  };
+
+  const syncQueue = useCallback(async (): Promise<boolean> => {
+    if (!isOnline || pendingQueue.length === 0 || isSyncing) return pendingQueue.length === 0;
 
     setIsSyncing(true);
     try {
@@ -65,11 +70,15 @@ export function useOfflineSync() {
       if (res.ok) {
         // Vaciamos la cola porque el backend ya procesó todo
         setPendingQueue([]);
+        localStorage.removeItem('omnipos_offline_sales');
+        return true;
       } else {
         console.warn('Fallo en sincronización. Reintentando más tarde.');
+        return false;
       }
     } catch (error) {
       console.error('Error de red al sincronizar', error);
+      return false;
     } finally {
       setIsSyncing(false);
     }
@@ -87,6 +96,7 @@ export function useOfflineSync() {
     pendingCount: pendingQueue.length,
     addToOfflineQueue,
     syncQueue,
+    clearQueue,
     isSyncing
   };
 }

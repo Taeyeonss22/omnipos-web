@@ -10,7 +10,11 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = session.user.id;
-  const branchId = (session.user as any).branchId || undefined;
+  let branchId = (session.user as any).branchId || undefined;
+  if (!branchId) {
+    const firstBranch = await prisma.branch.findFirst();
+    if (firstBranch) branchId = firstBranch.id;
+  }
 
   try {
     const { sales } = await request.json(); // array of offline sales
@@ -23,9 +27,18 @@ export async function POST(request: Request) {
 
     await prisma.$transaction(async (tx) => {
       for (const pendingSale of sales) {
-        // Calculate totals dynamically again for security (trust no client)
-        const subtotal = pendingSale.items.reduce((acc: number, item: any) => acc + (item.quantity * item.unitPrice), 0);
-        const tax = subtotal * 0.16;
+        const normalizedItems = (pendingSale.items || []).map((item: any) => {
+          const productId = item.product?.id || item.productId;
+          const unitPrice = Number(item.product?.price ?? item.unitPrice ?? 0);
+          const quantity = Number(item.quantity ?? 1);
+          const subtotal = item.subtotal !== undefined ? Number(item.subtotal) : quantity * unitPrice;
+          return { productId, quantity, unitPrice, subtotal };
+        }).filter((item: any) => Boolean(item.productId));
+
+        if (normalizedItems.length === 0) continue;
+
+        const subtotal = normalizedItems.reduce((acc: number, item: any) => acc + item.subtotal, 0);
+        const tax = 0;
         const total = subtotal + tax;
 
         // Generate folio if missing
@@ -45,18 +58,19 @@ export async function POST(request: Request) {
             total,
             status: 'COMPLETED',
             items: {
-              create: pendingSale.items.map((item: any) => ({
+              create: normalizedItems.map((item: any) => ({
                 productId: item.productId,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
-                subtotal: item.quantity * item.unitPrice
+                subtotal: item.subtotal
               }))
             },
             payments: {
               create: [
                 {
-                  method: pendingSale.paymentMethod,
-                  amount: total
+                  method: pendingSale.paymentMethod || 'CASH',
+                  amount: total,
+                  sessionId: pendingSale.sessionId
                 }
               ]
             }
@@ -64,7 +78,8 @@ export async function POST(request: Request) {
         });
 
         // Deduct inventory
-        for (const item of pendingSale.items) {
+        for (const item of normalizedItems) {
+          if (!branchId) continue;
           const inv = await tx.inventory.findUnique({
             where: { branchId_productId: { branchId, productId: item.productId } }
           });

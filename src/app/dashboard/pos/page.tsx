@@ -47,7 +47,7 @@ export default function POSPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
 
   const [productsCatalog, setProductsCatalog] = useState<any[]>([]);
-  const { isOnline, pendingCount, addToOfflineQueue, isSyncing } = useOfflineSync();
+  const { isOnline, pendingCount, addToOfflineQueue, syncQueue, clearQueue, isSyncing } = useOfflineSync();
 
   useEffect(() => {
     fetchSession();
@@ -132,15 +132,26 @@ export default function POSPage() {
     }
   };
 
-  const handleCloseRegisterClick = () => {
+  const handleCloseRegisterClick = async () => {
     if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
-    if (pendingCount > 0) return alert('Aún tienes ventas pendientes de sincronizar. Espera a que termine antes de cerrar.');
+    if (pendingCount > 0) {
+      const synced = await syncQueue();
+      if (!synced) {
+        const forceClear = window.confirm(
+          `Tienes ${pendingCount} venta(s) offline atascada(s) que no se pudieron sincronizar con el servidor.\n\n¿Deseas descartar esa cola pendiente para poder cerrar la caja ahora?`
+        );
+        if (forceClear) {
+          clearQueue();
+        } else {
+          return;
+        }
+      }
+    }
     setIsCloseModalOpen(true); setCloseErrorMsg("");
   };
 
   const processCloseRegister = async (totalAmount: number, breakdown: any) => {
     if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
-    if (pendingCount > 0) return alert('Aún tienes ventas pendientes de sincronizar. Espera a que termine antes de cerrar.');
 
     
     
@@ -533,10 +544,20 @@ export default function POSPage() {
                  )}
 
                  {pendingCount > 0 && (
-                   <span className="flex items-center gap-1 text-sm font-medium text-yellow-600 bg-yellow-50 px-2 py-1 rounded-md border border-yellow-200">
+                   <button
+                     type="button"
+                     onClick={async () => {
+                       const ok = await syncQueue();
+                       if (!ok && window.confirm(`No se pudieron sincronizar ${pendingCount} venta(s) offline. ¿Deseas limpiarlas de la memoria local?`)) {
+                         clearQueue();
+                       }
+                     }}
+                     title="Haz clic para reintentar sincronizar o limpiar"
+                     className="flex items-center gap-1 text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 px-2 py-1 rounded-md border border-yellow-300 cursor-pointer"
+                   >
                      <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} /> 
                      {pendingCount} Pdt.
-                   </span>
+                   </button>
                  )}
                </div>
 
