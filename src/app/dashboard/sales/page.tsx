@@ -10,16 +10,22 @@ export default function SalesHistoryPage() {
   const [sales, setSales] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const [previewTicket, setPreviewTicket] = useState<any>(null);
 
   useEffect(() => {
     fetchSales();
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchSales = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch('/api/sales');
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      const res = await fetch(`/api/sales?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setSales(Array.isArray(data) ? data : []);
@@ -93,8 +99,8 @@ export default function SalesHistoryPage() {
       </div>
 
       <div className="rounded-lg bg-white shadow overflow-hidden">
-        <div className="p-4 border-b">
-          <div className="relative w-full max-w-md">
+        <div className="p-4 border-b flex flex-wrap items-center justify-between gap-4">
+          <div className="relative flex-1 min-w-[240px] max-w-md">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -103,6 +109,34 @@ export default function SalesHistoryPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none"
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-medium">Desde:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 font-medium">Hasta:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-gray-900 focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="text-xs font-semibold text-blue-600 hover:underline"
+              >
+                Limpiar fechas
+              </button>
+            )}
           </div>
         </div>
 

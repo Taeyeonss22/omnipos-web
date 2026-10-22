@@ -12,7 +12,8 @@ import {
   Settings,
   LogOut,
   Receipt,
-  PackageOpen
+  PackageOpen,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,7 @@ export default function Sidebar({ userRole }: SidebarProps) {
     { name: 'Traspasos', href: '/dashboard/transfers', icon: Truck, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Clientes', href: '/dashboard/customers', icon: Users, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
     { name: 'Apartados', href: '/dashboard/layaways', icon: PackageOpen, roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
-    { name: 'Reportes', href: '/dashboard/reports', icon: Receipt, roles: ['ADMIN', 'MANAGER'] },
+    { name: 'Reportes POS', href: '/dashboard/reports', icon: BarChart3, roles: ['ADMIN', 'MANAGER'] },
     { name: 'Configuración', href: '/dashboard/settings', icon: Settings, roles: ['ADMIN'] },
   ];
 

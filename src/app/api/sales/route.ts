@@ -16,7 +16,23 @@ export async function GET(request: Request) {
   const role = (session.user as any).role;
 
   try {
-    const filter = (role === 'ADMIN' || !branchId) ? {} : { branchId };
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
+    const dateFilter: any = {};
+    if (startDate) {
+      dateFilter.gte = new Date(`${startDate}T00:00:00`);
+    }
+    if (endDate) {
+      dateFilter.lte = new Date(`${endDate}T23:59:59.999`);
+    }
+
+    const filter: any = (role === 'ADMIN' || !branchId) ? {} : { branchId };
+    if (startDate || endDate) {
+      filter.createdAt = dateFilter;
+    }
+
     const sales = await prisma.sale.findMany({
       where: filter,
       include: {
@@ -26,7 +42,7 @@ export async function GET(request: Request) {
         customer: true
       },
       orderBy: { createdAt: 'desc' },
-      take: 50
+      take: (startDate || endDate) ? 500 : 100
     });
     return NextResponse.json(sales);
   } catch (error: any) {
