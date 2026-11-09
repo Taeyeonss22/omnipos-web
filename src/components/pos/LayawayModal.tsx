@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { PackageOpen, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PackageOpen, X, User } from 'lucide-react';
 
 interface LayawayModalProps {
   isOpen: boolean;
@@ -12,14 +12,22 @@ interface LayawayModalProps {
 
 export default function LayawayModal({ isOpen, onClose, onConfirm, total, customers, selectedCustomerId }: LayawayModalProps) {
   const [deposit, setDeposit] = useState('');
-  const [customerId, setCustomerId] = useState(selectedCustomerId);
+  const [customerId, setCustomerId] = useState(selectedCustomerId || '');
   const [method, setMethod] = useState('CASH');
+
+  useEffect(() => {
+    if (isOpen) {
+      setCustomerId(selectedCustomerId || '');
+      setDeposit('');
+      setMethod('CASH');
+    }
+  }, [isOpen, selectedCustomerId]);
 
   if (!isOpen) return null;
 
   const numericDeposit = parseFloat(deposit) || 0;
   const remaining = Math.max(0, total - numericDeposit);
-  const isValid = customerId && numericDeposit >= 0 && numericDeposit <= total;
+  const isValid = Boolean(customerId && customerId.trim() !== '' && numericDeposit >= 0 && numericDeposit <= total);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
@@ -41,11 +49,16 @@ export default function LayawayModal({ isOpen, onClose, onConfirm, total, custom
               onChange={(e) => setCustomerId(e.target.value)}
               className="w-full rounded-md border border-gray-300 p-2 focus:border-orange-500 focus:outline-none"
             >
-              <option value="">Selecciona un cliente...</option>
+              <option value="">-- Selecciona un cliente registrado --</option>
               {customers.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
+            {!customerId && (
+              <p className="mt-1 text-xs text-red-500 font-medium">
+                * Debes seleccionar un cliente para vincular el apartado.
+              </p>
+            )}
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">

@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const statusParam = searchParams.get('status');
 
     const dateFilter: any = {};
     if (startDate) {
@@ -32,6 +33,9 @@ export async function GET(request: Request) {
     if (startDate || endDate) {
       filter.createdAt = dateFilter;
     }
+    if (statusParam) {
+      filter.status = statusParam;
+    }
 
     const sales = await prisma.sale.findMany({
       where: filter,
@@ -42,7 +46,7 @@ export async function GET(request: Request) {
         customer: true
       },
       orderBy: { createdAt: 'desc' },
-      take: (startDate || endDate) ? 500 : 100
+      take: (statusParam === 'LAYAWAY') ? 1000 : ((startDate || endDate) ? 500 : 100)
     });
     return NextResponse.json(sales);
   } catch (error: any) {
@@ -78,12 +82,14 @@ export async function POST(request: Request) {
     // Transacción ACID: Todo o nada
     const sale = await prisma.$transaction(async (tx) => {
       // 1. Crear la venta
+      const validCustomerId = (customerId && typeof customerId === 'string' && customerId.trim() !== '') ? customerId : null;
+
       const newSale = await tx.sale.create({
         data: {
           folio,
           branchId,
           userId,
-          customerId,
+          customerId: validCustomerId,
           sessionId,
           subtotal,
           tax,
@@ -115,18 +121,27 @@ export async function POST(request: Request) {
 
       // 2. Descontar Inventario
       for (const item of items) {
+        const prodId = item.product?.id || item.productId;
+        if (!branchId || !prodId) continue;
+
         const inventory = await tx.inventory.findUnique({
-          where: { branchId_productId: { branchId, productId: item.product?.id || item.productId } }
+          where: { branchId_productId: { branchId, productId: prodId } }
         });
 
-        if (!inventory || inventory.quantity < item.quantity) {
-          throw new Error(`Stock insuficiente para el producto ID: ${item.product?.id || item.productId}`);
+        if (inventory) {
+          await tx.inventory.update({
+            where: { id: inventory.id },
+            data: { quantity: { decrement: item.quantity } }
+          });
+        } else {
+          await tx.inventory.create({
+            data: {
+              branchId,
+              productId: prodId,
+              quantity: -item.quantity
+            }
+          });
         }
-
-        await tx.inventory.update({
-          where: { id: inventory.id },
-          data: { quantity: { decrement: item.quantity } }
-        });
       }
 
       // 3. Afectar Crédito si aplica

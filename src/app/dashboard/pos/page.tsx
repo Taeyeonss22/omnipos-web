@@ -303,11 +303,42 @@ export default function POSPage() {
   };
 
 
+  const printTicket = (folioText: string, ticketMethod: string, customItems?: any[], customTotal?: number) => {
+    const localSettingsRaw = localStorage.getItem('printerSettings');
+    let localSettings = { header: 'CRIMEN SANTO', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
+    if (localSettingsRaw) {
+      localSettings = JSON.parse(localSettingsRaw);
+    }
+
+    const itemsToPrint = customItems || cart.map((i: any) => ({ quantity: i.quantity, product: i.product?.name, subtotal: i.subtotal }));
+    const totalToPrint = customTotal !== undefined ? customTotal : total;
+
+    setPreviewTicket({
+      folio: folioText,
+      branchName: localSettings.header,
+      date: new Date().toISOString(),
+      cashier: session?.user?.name,
+      items: itemsToPrint,
+      subtotal: totalToPrint,
+      tax: 0,
+      total: totalToPrint,
+      method: ticketMethod,
+      footer: localSettings.footer,
+      width: localSettings.width,
+      printerName: localSettings.printerName
+    });
+  };
+
   const handleLayawayConfirm = async (customerId: string, deposit: number, method: string) => {
+    if (!cashSession) return alert('Debes tener un turno de caja abierto para registrar un apartado.');
+    if (!customerId || customerId.trim() === '') return alert('Debes seleccionar un cliente.');
+    
     setIsLayawayModalOpen(false);
     setIsProcessing(true);
     
     try {
+      const savedCart = [...cart];
+      const savedTotal = total;
       const res = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -321,14 +352,27 @@ export default function POSPage() {
         }),
       });
       
-      if (!res.ok) throw new Error('Error al crear apartado');
-      const sale = await res.json();
+      const sale = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(sale.error || 'Error al guardar el apartado en el servidor');
+      }
+
       setCart([]);
       setSelectedCustomer('');
-      alert(`Apartado creado exitosamente. Folio: ${sale.folio}`);
-    } catch (error) {
+      
+      const remaining = Math.max(0, savedTotal - deposit);
+      printTicket(
+        sale.folio, 
+        `APARTADO (${method === 'CARD' ? 'Tarjeta' : 'Efectivo'}) - Anticipo: $${deposit.toFixed(2)} - Resta: $${remaining.toFixed(2)}`,
+        savedCart.map((i: any) => ({ quantity: i.quantity, product: i.product?.name, subtotal: i.subtotal })),
+        savedTotal
+      );
+
+      alert(`¡Apartado creado exitosamente!\nFolio: ${sale.folio}\nAnticipo: $${deposit.toFixed(2)}\nResta por pagar: $${remaining.toFixed(2)}`);
+    } catch (error: any) {
       console.error(error);
-      alert('Hubo un error al crear el apartado.');
+      alert('Error al crear apartado: ' + (error.message || 'Error desconocido'));
     } finally {
       setIsProcessing(false);
       inputRef.current?.focus();
@@ -338,37 +382,13 @@ export default function POSPage() {
   const processCheckout = async (method: string, details: any = {}) => {
     setPaymentModal({ isOpen: false, method: '' });
     setIsProcessing(true);
-    
-    // Función de impresión aislada
-    const printTicket = (folioText: string, ticketMethod: string = method) => {
-      const localSettingsRaw = localStorage.getItem('printerSettings');
-      let localSettings = { header: 'CRIMEN SANTO', footer: '¡Gracias por su compra!', width: '80mm', printerName: 'printer:impresora_termica' };
-      if (localSettingsRaw) {
-        localSettings = JSON.parse(localSettingsRaw);
-      }
-      
-      let finalMethod = ticketMethod;
-      if (ticketMethod === 'CARD' && details.reference) {
-        finalMethod = `TARJETA (Ref: ${details.reference})`;
-      } else if (ticketMethod === 'CASH' && details.amountGiven) {
-        finalMethod = `EFECTIVO (Recibido: $${details.amountGiven.toFixed(2)} - Cambio: $${details.change.toFixed(2)})`;
-      }
 
-      setPreviewTicket({
-        folio: folioText,
-        branchName: localSettings.header,
-        date: new Date().toISOString(),
-        cashier: session?.user?.name,
-        items: cart.map((i: any) => ({ quantity: i.quantity, product: i.product?.name, subtotal: i.subtotal })),
-        subtotal,
-        tax,
-        total,
-        method: finalMethod,
-        footer: localSettings.footer,
-        width: localSettings.width,
-        printerName: localSettings.printerName
-      });
-    };
+    let finalMethod = method;
+    if (method === 'CARD' && details.reference) {
+      finalMethod = `TARJETA (Ref: ${details.reference})`;
+    } else if (method === 'CASH' && details.amountGiven) {
+      finalMethod = `EFECTIVO (Recibido: $${details.amountGiven.toFixed(2)} - Cambio: $${details.change.toFixed(2)})`;
+    }
 
     const sendToPrintBridge = async (payload: any) => {
       fetch('http://127.0.0.1:8080/print', {
@@ -396,13 +416,13 @@ export default function POSPage() {
         const sale = await res.json();
         setCart([]);
         setSelectedCustomer('');
-        printTicket(sale.folio);
+        printTicket(sale.folio, finalMethod);
         alert(`Venta Completada. Folio: ${sale.folio}`);
       } catch (error: any) {
         // Fallback a offline si el fetch falla estando "onLine" = true (falso positivo de red)
         console.warn('Fallback a modo offline por fallo de fetch', error);
         saveOfflineSale(method);
-        printTicket('OFFLINE-PENDING');
+        printTicket('OFFLINE-PENDING', finalMethod);
       } finally {
         setIsProcessing(false);
         inputRef.current?.focus();
@@ -412,7 +432,7 @@ export default function POSPage() {
       saveOfflineSale(method);
       setCart([]);
       setSelectedCustomer('');
-      printTicket('OFFLINE-PENDING');
+      printTicket('OFFLINE-PENDING', finalMethod);
       setIsProcessing(false);
       inputRef.current?.focus();
     }
