@@ -4,17 +4,15 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
 import crypto from 'crypto';
+import { resolveBranchId } from '@/lib/session';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const userId = session.user.id;
-  let branchId = (session.user as any).branchId || undefined;
-  if (!branchId) {
-    const firstBranch = await prisma.branch.findFirst();
-    if (firstBranch) branchId = firstBranch.id;
-  }
+  const branchId = await resolveBranchId(session);
+  if (!branchId) return NextResponse.json({ error: 'No hay ninguna sucursal registrada' }, { status: 400 });
 
   try {
     const { sales } = await request.json(); // array of offline sales
@@ -24,6 +22,14 @@ export async function POST(request: Request) {
     }
 
     const processedFolios: string[] = [];
+    const syncedIds: string[] = [];
+
+    // Turnos del usuario: solo se aceptan ventas ligadas a un turno propio
+    const userSessions = await prisma.cashRegisterSession.findMany({
+      where: { userId },
+      select: { id: true }
+    });
+    const ownSessionIds = new Set(userSessions.map(s => s.id));
 
     await prisma.$transaction(async (tx) => {
       for (const pendingSale of sales) {
@@ -35,14 +41,29 @@ export async function POST(request: Request) {
           return { productId, quantity, unitPrice, subtotal };
         }).filter((item: any) => Boolean(item.productId));
 
-        if (normalizedItems.length === 0) continue;
+        if (normalizedItems.length === 0) {
+          if (pendingSale.id) syncedIds.push(String(pendingSale.id));
+          continue;
+        }
+
+        // Folio determinístico a partir del id local: si el navegador reintenta
+        // el envío (p. ej. se perdió la respuesta), la venta NO se duplica.
+        const folio = pendingSale.id
+          ? `TK-OFF-${String(pendingSale.id).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12).toUpperCase()}`
+          : `TK-OFF-${Date.now().toString().slice(-6)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+        const alreadySynced = await tx.sale.findUnique({ where: { folio }, select: { id: true } });
+        if (alreadySynced) {
+          if (pendingSale.id) syncedIds.push(String(pendingSale.id));
+          continue;
+        }
+
+        const sessionId = pendingSale.sessionId && ownSessionIds.has(pendingSale.sessionId)
+          ? pendingSale.sessionId
+          : null;
 
         const subtotal = normalizedItems.reduce((acc: number, item: any) => acc + item.subtotal, 0);
         const tax = 0;
         const total = subtotal + tax;
-
-        // Generate folio if missing
-        const folio = `TK-OFF-${Date.now().toString().slice(-6)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
         // Create Sale
         const sale = await tx.sale.create({
@@ -50,13 +71,15 @@ export async function POST(request: Request) {
             folio,
             branchId,
             userId,
-            sessionId: pendingSale.sessionId,
+            sessionId,
             customerId: pendingSale.customerId || null,
             subtotal,
             tax,
             discount: 0,
             total,
             status: 'COMPLETED',
+            // Conservar la hora real en que se cobró sin internet
+            ...(pendingSale.timestamp ? { createdAt: new Date(Number(pendingSale.timestamp)) } : {}),
             items: {
               create: normalizedItems.map((item: any) => ({
                 productId: item.productId,
@@ -70,7 +93,7 @@ export async function POST(request: Request) {
                 {
                   method: pendingSale.paymentMethod || 'CASH',
                   amount: total,
-                  sessionId: pendingSale.sessionId
+                  sessionId
                 }
               ]
             }
@@ -79,7 +102,6 @@ export async function POST(request: Request) {
 
         // Deduct inventory
         for (const item of normalizedItems) {
-          if (!branchId) continue;
           const inv = await tx.inventory.findUnique({
             where: { branchId_productId: { branchId, productId: item.productId } }
           });
@@ -103,8 +125,9 @@ export async function POST(request: Request) {
         }
 
         processedFolios.push(sale.folio);
+        if (pendingSale.id) syncedIds.push(String(pendingSale.id));
       }
-    });
+    }, { timeout: 30000 });
 
     await createAuditLog({
       userId,
@@ -115,7 +138,7 @@ export async function POST(request: Request) {
       details: { count: processedFolios.length, folios: processedFolios }
     });
 
-    return NextResponse.json({ success: true, count: processedFolios.length, folios: processedFolios });
+    return NextResponse.json({ success: true, count: processedFolios.length, folios: processedFolios, syncedIds });
   } catch (error: any) {
     console.error('Offline Sync Error:', error);
     return NextResponse.json({ error: 'Error sincronizando ventas', details: error.message }, { status: 500 });

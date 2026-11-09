@@ -4,13 +4,13 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || !['ADMIN', 'MANAGER'].includes((session.user as any).role)) {
     return NextResponse.json({ error: 'No tienes permisos para eliminar productos' }, { status: 403 });
   }
 
-  const productId = (await Promise.resolve(params)).id;
+  const { id: productId } = await params;
 
   try {
     const product = await prisma.product.findUnique({
@@ -56,6 +56,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error(error);
-    return NextResponse.json({ error: 'CRASH: ' + error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Error eliminando producto: ' + error.message }, { status: 500 });
   }
 }

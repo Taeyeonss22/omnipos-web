@@ -28,6 +28,9 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const { name, email, phone, rfc, creditLimit } = data;
+    if (!name || !String(name).trim()) {
+      return NextResponse.json({ error: 'El nombre del cliente es obligatorio' }, { status: 400 });
+    }
 
     const newCustomer = await prisma.customer.create({
       data: {

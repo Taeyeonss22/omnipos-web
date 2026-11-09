@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       data: {
         name: data.name,
         address: data.address,
-        registers: {
+        cashRegisters: {
           create: { name: 'Caja Principal' }
         }
       }

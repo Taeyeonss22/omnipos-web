@@ -11,11 +11,8 @@ import CloseRegisterModal from '@/components/pos/CloseRegisterModal';
 import ProductSelectionModal from '@/components/pos/ProductSelectionModal';
 
 interface CartItem {
-  productId: string;
-  code: string;
-  name: string;
+  product: any; // producto tal como viene del catálogo (/api/products)
   quantity: number;
-  unitPrice: number;
   subtotal: number;
 }
 
@@ -125,7 +122,8 @@ export default function POSPage() {
         setShowOpenModal(false);
         fetchSession();
       } else {
-        alert('Error al abrir la caja');
+        const errData = await res.json().catch(() => ({}));
+        alert('Error al abrir la caja: ' + (errData.error || 'intenta de nuevo'));
       }
     } catch (error) {
       console.error(error);
@@ -197,7 +195,7 @@ export default function POSPage() {
               tax: 0,
               total: totalAmount,
               method: 'Z-REPORT',
-              footer: `Declarado: ${totalAmount.toFixed(2)}\nDiferencia (Sobrante/Faltante): ${data.difference.toFixed(2)}\n\nFirma del Cajero:\n\n_________________________`, 
+              footer: `Declarado: ${totalAmount.toFixed(2)}\nDiferencia (Sobrante/Faltante): ${Number(data.difference || 0).toFixed(2)}\n\nFirma del Cajero:\n\n_________________________`, 
               width: localSettings.width,
               printerName: localSettings.printerName
             })
@@ -249,14 +247,24 @@ export default function POSPage() {
 
     const addToCart = (product: any) => {
     const qtyChange = isReturnMode ? -1 : 1;
+    if (!isReturnMode) {
+      // Aviso cuando el sistema marca que ya no hay piezas (se permite vender igual)
+      const stock = product.inventories?.reduce((acc: number, inv: any) => acc + inv.quantity, 0) || 0;
+      const inCart = cart.find((item: any) => item.product?.id === product.id)?.quantity || 0;
+      if (stock - inCart <= 0 && !window.confirm(`El sistema marca ${Math.max(0, stock - inCart)} piezas de "${product.name}".\n¿Vender de todos modos?`)) {
+        return;
+      }
+    }
     setCart(prev => {
       const existing = prev.find((item: any) => item.product.id === product.id);
       if (existing) {
-        return prev.map((item: any) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + qtyChange, subtotal: (item.quantity + qtyChange) * product.price }
-            : item
-        );
+        return prev
+          .map((item: any) =>
+            item.product.id === product.id
+              ? { ...item, quantity: item.quantity + qtyChange, subtotal: (item.quantity + qtyChange) * product.price }
+              : item
+          )
+          .filter((item: any) => item.quantity !== 0); // un artículo en cantidad 0 sobra en el ticket
       }
       return [...prev, { product, quantity: qtyChange, subtotal: qtyChange * product.price }];
     });
@@ -399,8 +407,9 @@ export default function POSPage() {
     };
 
     if (isOnline) {
+      let res: Response;
       try {
-        const res = await fetch('/api/sales', {
+        res = await fetch('/api/sales', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -410,19 +419,32 @@ export default function POSPage() {
             customerId: selectedCustomer || undefined
           }),
         });
-        
-        if (!res.ok) throw new Error('Error de servidor al guardar la venta');
-        
-        const sale = await res.json();
+      } catch (error: any) {
+        // Solo un fallo de RED (sin respuesta del servidor) pasa a modo offline
+        console.warn('Fallback a modo offline por fallo de red', error);
+        saveOfflineSale(method);
+        printTicket('OFFLINE-PENDING', finalMethod);
+        setCart([]);
+        setSelectedCustomer('');
+        setIsProcessing(false);
+        inputRef.current?.focus();
+        return;
+      }
+
+      try {
+        const sale = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // El servidor RECHAZÓ la venta (sin stock, límite de crédito, caja cerrada...).
+          // No se guarda como offline: se avisa al cajero y el carrito se conserva.
+          alert('No se pudo cobrar la venta: ' + (sale.error || `error ${res.status}`));
+          if (res.status === 400) fetchSession();
+          return;
+        }
         setCart([]);
         setSelectedCustomer('');
         printTicket(sale.folio, finalMethod);
         alert(`Venta Completada. Folio: ${sale.folio}`);
-      } catch (error: any) {
-        // Fallback a offline si el fetch falla estando "onLine" = true (falso positivo de red)
-        console.warn('Fallback a modo offline por fallo de fetch', error);
-        saveOfflineSale(method);
-        printTicket('OFFLINE-PENDING', finalMethod);
+        fetchCatalog(); // refrescar existencias del catálogo local
       } finally {
         setIsProcessing(false);
         inputRef.current?.focus();
@@ -541,7 +563,7 @@ export default function POSPage() {
                   >
                     <div>
                       <span className="block font-bold text-gray-800">{p.name}</span>
-                      <span className="text-xs text-gray-500">Cód: {p.code} | Stock: {p.inventories?.reduce((acc, inv) => acc + inv.quantity, 0) || 0}</span>
+                      <span className="text-xs text-gray-500">Cód: {p.code} | Stock: {p.inventories?.reduce((acc: number, inv: any) => acc + inv.quantity, 0) || 0}</span>
                     </div>
                     <span className="font-bold text-blue-600">${p.price.toFixed(2)}</span>
                   </li>
@@ -701,22 +723,22 @@ export default function POSPage() {
         </div>
       </div>
 
-      <PaymentModal 
+      {paymentModal.isOpen && <PaymentModal 
         isOpen={paymentModal.isOpen}
         method={paymentModal.method}
         total={total}
         customerName={customers.find(c => c.id === selectedCustomer)?.name}
         onClose={() => setPaymentModal({ isOpen: false, method: '' })}
         onConfirm={(method, details) => processCheckout(method, details)}
-      />
+      />}
 
       
-      <CloseRegisterModal
+      {isCloseModalOpen && <CloseRegisterModal
         errorMsg={closeErrorMsg}
         isOpen={isCloseModalOpen}
         onClose={() => setIsCloseModalOpen(false)}
         onConfirm={(total, breakdown) => processCloseRegister(total, breakdown)}
-      />
+      />}
       <ProductSelectionModal
         isOpen={selectionModal.isOpen}
         onClose={() => setSelectionModal({ isOpen: false, matches: [] })}
@@ -727,14 +749,14 @@ export default function POSPage() {
           if (inputRef.current) inputRef.current.focus();
         }}
       />
-      <LayawayModal 
+      {isLayawayModalOpen && <LayawayModal 
         isOpen={isLayawayModalOpen} 
         onClose={() => setIsLayawayModalOpen(false)} 
         onConfirm={handleLayawayConfirm} 
         total={total} 
         customers={customers} 
         selectedCustomerId={selectedCustomer} 
-      />
+      />}
 
       {isMovementModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">

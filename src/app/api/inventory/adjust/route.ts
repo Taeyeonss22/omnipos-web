@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
+import { resolveBranchId } from '@/lib/session';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -10,10 +11,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  let branchId = (session.user as any).branchId || undefined;
+  const branchId = await resolveBranchId(session);
   if (!branchId) {
-    const firstBranch = await prisma.branch.findFirst();
-    if (firstBranch) branchId = firstBranch.id;
+    return NextResponse.json({ error: 'No hay ninguna sucursal registrada' }, { status: 400 });
   }
 
   try {
@@ -24,7 +24,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
 
-    const delta = parseInt(newQuantity) - parseInt(snapshotStock);
+    const target = parseInt(newQuantity, 10);
+    const snapshot = parseInt(snapshotStock, 10);
+    if (!Number.isFinite(target) || target < 0 || !Number.isFinite(snapshot)) {
+      return NextResponse.json({ error: 'La cantidad capturada no es válida' }, { status: 400 });
+    }
+
+    const delta = target - snapshot;
 
     const inventory = await prisma.inventory.upsert({
       where: { branchId_productId: { branchId, productId } },
@@ -32,7 +38,7 @@ export async function POST(request: Request) {
       create: {
         branchId,
         productId,
-        quantity: parseInt(newQuantity), // Si no existía, tomamos el físico
+        quantity: target, // Si no existía, tomamos el físico
         minStock: 5
       }
     });
@@ -43,7 +49,7 @@ export async function POST(request: Request) {
       action: 'INVENTORY_ADJUSTMENT',
       entity: 'INVENTORY',
       entityId: inventory.id,
-      details: { newQuantity, reason, productId }
+      details: { newQuantity: target, previous: snapshot, delta, reason, productId }
     });
 
     return NextResponse.json(inventory, { status: 200 });

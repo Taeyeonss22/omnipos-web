@@ -31,7 +31,7 @@ export default function LayawaysPage() {
 
   const handleAddPayment = async (sale: any) => {
     const totalPaid = sale.payments?.reduce((acc: number, p: any) => acc + Number(p.amount), 0) || 0;
-    const remaining = sale.total - totalPaid;
+    const remaining = Math.round((sale.total - totalPaid) * 100) / 100;
     
     if (remaining <= 0) {
       return alert('Este apartado ya está liquidado.');
@@ -40,7 +40,7 @@ export default function LayawaysPage() {
     const amountStr = prompt(`Saldo restante por pagar: $${remaining.toFixed(2)}\n\nIngresa el monto a abonar en EFECTIVO:`, remaining.toFixed(2));
     if (!amountStr) return;
     
-    const amount = parseFloat(amountStr);
+    const amount = Math.round(parseFloat(amountStr.replace(',', '.')) * 100) / 100;
     if (isNaN(amount) || amount <= 0 || amount > remaining) {
       return alert('Monto inválido. Debe ser un número mayor a 0 y no mayor al saldo restante.');
     }

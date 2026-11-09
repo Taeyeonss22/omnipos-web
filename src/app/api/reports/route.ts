@@ -391,7 +391,7 @@ export async function GET(request: Request) {
         totalCostVal,
         totalRetailVal,
         expectedProfit: totalRetailVal - totalCostVal,
-        isLowStock: qty <= Number(inv.minStock || 5),
+        isLowStock: qty <= Number(inv.minStock ?? 0),
       };
     });
 

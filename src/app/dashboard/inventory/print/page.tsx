@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function PrintCountSheet() {
+function PrintCountSheet() {
   const searchParams = useSearchParams();
   const location = searchParams.get('location') || '';
   const [products, setProducts] = useState<any[]>([]);
@@ -14,6 +14,7 @@ export default function PrintCountSheet() {
     fetch(`/api/products`)
       .then(res => res.json())
       .then(data => {
+        if (!Array.isArray(data)) data = [];
         if (location) {
           setProducts(data.filter((p: any) => p.inventories?.[0]?.location === location));
         } else {
@@ -82,5 +83,14 @@ export default function PrintCountSheet() {
         }
       `}</style>
     </div>
+  );
+}
+
+// useSearchParams requiere un <Suspense> alrededor en Next.js 15+
+export default function PrintCountSheetPage() {
+  return (
+    <Suspense fallback={<div className="p-8">Cargando hoja de conteo...</div>}>
+      <PrintCountSheet />
+    </Suspense>
   );
 }

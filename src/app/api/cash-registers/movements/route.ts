@@ -20,14 +20,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No tienes ninguna caja abierta' }, { status: 400 });
     }
 
-    if (amount <= 0) {
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       return NextResponse.json({ error: 'El monto debe ser mayor a 0' }, { status: 400 });
+    }
+    if (type !== 'IN' && type !== 'OUT') {
+      return NextResponse.json({ error: 'Tipo de movimiento inválido' }, { status: 400 });
+    }
+    if (!reason || !String(reason).trim()) {
+      return NextResponse.json({ error: 'Indica el motivo del movimiento' }, { status: 400 });
     }
 
     const movement = await prisma.cashMovement.create({
       data: {
         type,
-        amount: Number(amount),
+        amount: numericAmount,
         reason,
         sessionId: activeSession.id
       }

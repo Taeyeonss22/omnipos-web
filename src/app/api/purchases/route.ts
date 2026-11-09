@@ -3,17 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
+import { BusinessError, makeFolio, resolveBranchId } from '@/lib/session';
 
 // Listar órdenes de compra
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let branchId = (session.user as any).branchId || undefined;
-  if (!branchId) {
-    const firstBranch = await prisma.branch.findFirst();
-    if (firstBranch) branchId = firstBranch.id;
-  }
+  const branchId = await resolveBranchId(session);
 
   try {
     const orders = await prisma.purchaseOrder.findMany({
@@ -34,21 +31,33 @@ export async function GET(request: Request) {
 // Crear orden de compra
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'No tienes permisos para crear compras' }, { status: 403 });
+  }
 
   const userId = session.user.id;
-  const branchId = (session.user as any).branchId || undefined;
+  // Antes el ADMIN sin sucursal no podía crear órdenes (branchId vacío)
+  const branchId = await resolveBranchId(session);
+  if (!branchId) {
+    return NextResponse.json({ error: 'Primero crea una sucursal en Configuración' }, { status: 400 });
+  }
 
   try {
     const data = await request.json();
     const { supplierId, items } = data; // items: [{ productId, quantity, unitCost }]
 
-    if (!supplierId || !items || items.length === 0) {
+    if (!supplierId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
+    const invalid = items.some((item: any) =>
+      !item.productId || !(parseInt(item.quantity, 10) > 0) || !(parseFloat(item.unitCost) >= 0)
+    );
+    if (invalid) {
+      return NextResponse.json({ error: 'Hay artículos con cantidad o costo inválido' }, { status: 400 });
+    }
 
-    const folio = `OC-${Date.now().toString().slice(-6)}`;
-    const total = items.reduce((acc: number, item: any) => acc + (item.quantity * parseFloat(item.unitCost)), 0);
+    const folio = makeFolio('OC');
+    const total = items.reduce((acc: number, item: any) => acc + (parseInt(item.quantity, 10) * parseFloat(item.unitCost)), 0);
 
     const order = await prisma.purchaseOrder.create({
       data: {
@@ -60,7 +69,7 @@ export async function POST(request: Request) {
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,
-            quantity: item.quantity,
+            quantity: parseInt(item.quantity, 10),
             unitCost: parseFloat(item.unitCost)
           }))
         }
@@ -86,7 +95,9 @@ export async function POST(request: Request) {
 // Recibir orden de compra (Aumentar Inventario)
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'No tienes permisos para recibir compras' }, { status: 403 });
+  }
 
   try {
     const { id, action } = await request.json();
@@ -106,6 +117,14 @@ export async function PUT(request: Request) {
 
     // Transacción: Cambiar estado y subir inventario
     const updated = await prisma.$transaction(async (tx) => {
+      // 0. Marcar como recibida de forma atómica: si dos personas dan clic
+      //    al mismo tiempo, solo una suma el inventario.
+      const claimed = await tx.purchaseOrder.updateMany({
+        where: { id, status: 'PENDING' },
+        data: { status: 'RECEIVED' }
+      });
+      if (claimed.count === 0) throw new BusinessError('Orden no válida o ya recibida');
+
       // 1. Aumentar inventario en la sucursal actual
       for (const item of order.items) {
         await tx.inventory.upsert({
@@ -124,14 +143,15 @@ export async function PUT(request: Request) {
           where: { id: item.productId },
           data: { cost: item.unitCost }
         });
+
+        await tx.purchaseOrderItem.update({
+          where: { id: item.id },
+          data: { receivedQuantity: item.quantity }
+        });
       }
 
-      // 2. Marcar orden como recibida
-      return await tx.purchaseOrder.update({
-        where: { id },
-        data: { status: 'RECEIVED' }
-      });
-    });
+      return await tx.purchaseOrder.findUnique({ where: { id } });
+    }, { timeout: 30000 });
 
     await createAuditLog({
       userId: session.user.id,
@@ -144,6 +164,9 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(updated);
   } catch (error: any) {
+    if (error instanceof BusinessError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message || 'Error updating order' }, { status: 500 });
   }
 }

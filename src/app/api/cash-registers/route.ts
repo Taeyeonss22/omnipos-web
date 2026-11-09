@@ -9,6 +9,9 @@ export async function POST(request: Request) {
 
   try {
     const data = await request.json();
+    if (!data.name || !data.branchId) {
+      return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
+    }
     const newRegister = await prisma.cashRegister.create({
       data: {
         name: data.name,

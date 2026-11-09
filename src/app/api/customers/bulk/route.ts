@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         });
         imported++;
       }
-    });
+    }, { timeout: 60000 });
 
     await createAuditLog({
       userId: session.user.id,

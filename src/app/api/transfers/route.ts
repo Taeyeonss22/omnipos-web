@@ -3,22 +3,22 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
+import { BusinessError, makeFolio, resolveBranchId } from '@/lib/session';
 
 // Listar traspasos
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const branchId = (session.user as any).branchId || undefined;
+  const branchId = session.user.branchId || undefined;
+  // El ADMIN sin sucursal ve todos los traspasos
+  const where = branchId
+    ? { OR: [{ sourceBranchId: branchId }, { targetBranchId: branchId }] }
+    : {};
 
   try {
     const transfers = await prisma.transferRequest.findMany({
-      where: {
-        OR: [
-          { sourceBranchId: branchId },
-          { targetBranchId: branchId }
-        ]
-      },
+      where,
       include: {
         sourceBranch: true,
         targetBranch: true,
@@ -36,20 +36,29 @@ export async function GET(request: Request) {
 // Crear solicitud de traspaso
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'No tienes permisos para crear traspasos' }, { status: 403 });
+  }
 
   const userId = session.user.id;
-  const sourceBranchId = (session.user as any).branchId;
 
   try {
     const data = await request.json();
     const { targetBranchId, items } = data; // items: [{ productId, quantity }]
+    // Permite indicar el origen; si no, se usa la sucursal del usuario
+    const sourceBranchId = data.sourceBranchId || (await resolveBranchId(session));
 
-    if (!targetBranchId || !items || items.length === 0) {
+    if (!sourceBranchId || !targetBranchId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 });
     }
+    if (sourceBranchId === targetBranchId) {
+      return NextResponse.json({ error: 'La sucursal destino debe ser distinta a la de origen' }, { status: 400 });
+    }
+    if (items.some((i: any) => !i.productId || !(parseInt(i.quantity, 10) > 0))) {
+      return NextResponse.json({ error: 'Hay artículos con cantidad inválida' }, { status: 400 });
+    }
 
-    const folio = `TR-${Date.now().toString().slice(-6)}`;
+    const folio = makeFolio('TR');
 
     const transfer = await prisma.transferRequest.create({
       data: {
@@ -60,7 +69,7 @@ export async function POST(request: Request) {
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,
-            quantity: item.quantity
+            quantity: parseInt(item.quantity, 10)
           }))
         }
       },
@@ -82,47 +91,58 @@ export async function POST(request: Request) {
   }
 }
 
-// Actualizar estado de traspaso (Aprobar/Recibir)
+const TRANSITIONS: Record<string, { from: string; to: string }> = {
+  APPROVE: { from: 'PENDING', to: 'APPROVED' },
+  SHIP: { from: 'APPROVED', to: 'SHIPPED' },
+  RECEIVE: { from: 'SHIPPED', to: 'RECEIVED' },
+  CANCEL: { from: 'PENDING', to: 'CANCELLED' },
+};
+
+// Actualizar estado de traspaso (Aprobar/Enviar/Recibir)
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session || !['ADMIN', 'MANAGER'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'No tienes permisos para modificar traspasos' }, { status: 403 });
+  }
 
   try {
     const { id, action } = await request.json();
-    
+    const transition = TRANSITIONS[action];
+    if (!transition) {
+      return NextResponse.json({ error: 'Acción no válida' }, { status: 400 });
+    }
+
     const transfer = await prisma.transferRequest.findUnique({
       where: { id },
       include: { items: true }
     });
 
     if (!transfer) return NextResponse.json({ error: 'Transfer not found' }, { status: 404 });
+    if (transfer.status !== transition.from) {
+      return NextResponse.json({ error: 'Transición de estado no válida' }, { status: 400 });
+    }
 
-    let newStatus = transfer.status;
+    // Cambio de estado + movimiento de inventario en UNA sola transacción.
+    // El cambio de estado es condicional, así un doble clic no descuenta/suma dos veces.
+    const updated = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.transferRequest.updateMany({
+        where: { id, status: transition.from },
+        data: { status: transition.to }
+      });
+      if (claimed.count === 0) throw new BusinessError('El traspaso ya fue actualizado por otra persona');
 
-    if (action === 'APPROVE' && transfer.status === 'PENDING') {
-      newStatus = 'APPROVED';
-    } else if (action === 'SHIP' && transfer.status === 'APPROVED') {
-      newStatus = 'SHIPPED';
-      // Descontar inventario de la sucursal origen
-      await prisma.$transaction(async (tx) => {
+      if (action === 'SHIP') {
+        // Descontar inventario de la sucursal origen
         for (const item of transfer.items) {
-          const inv = await tx.inventory.findUnique({
-            where: { branchId_productId: { branchId: transfer.sourceBranchId, productId: item.productId } }
-          });
-          if (!inv || inv.quantity < item.quantity) throw new Error('Stock insuficiente en origen para enviar');
-          
-          await tx.inventory.update({
-            where: { id: inv.id },
+          const res = await tx.inventory.updateMany({
+            where: { branchId: transfer.sourceBranchId, productId: item.productId, quantity: { gte: item.quantity } },
             data: { quantity: { decrement: item.quantity } }
           });
+          if (res.count === 0) throw new BusinessError('Stock insuficiente en origen para enviar');
         }
-      });
-    } else if (action === 'RECEIVE' && transfer.status === 'SHIPPED') {
-      newStatus = 'RECEIVED';
-      // Aumentar inventario en la sucursal destino
-      await prisma.$transaction(async (tx) => {
+      } else if (action === 'RECEIVE') {
+        // Aumentar inventario en la sucursal destino
         for (const item of transfer.items) {
-          // Usar upsert por si no existía el producto en la sucursal destino
           await tx.inventory.upsert({
             where: { branchId_productId: { branchId: transfer.targetBranchId, productId: item.productId } },
             update: { quantity: { increment: item.quantity } },
@@ -134,27 +154,25 @@ export async function PUT(request: Request) {
             }
           });
         }
-      });
-    } else {
-      return NextResponse.json({ error: 'Transición de estado no válida' }, { status: 400 });
-    }
+      }
 
-    const updated = await prisma.transferRequest.update({
-      where: { id },
-      data: { status: newStatus }
-    });
+      return tx.transferRequest.findUnique({ where: { id } });
+    }, { timeout: 30000 });
 
     await createAuditLog({
       userId: session.user.id,
-      branchId: (session.user as any).branchId,
+      branchId: session.user.branchId || undefined,
       action: `TRANSFER_${action}`,
       entity: 'TRANSFER',
       entityId: id,
-      details: { newStatus }
+      details: { newStatus: transition.to }
     });
 
     return NextResponse.json(updated);
   } catch (error: any) {
+    if (error instanceof BusinessError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: error.message || 'Error updating transfer' }, { status: 500 });
   }
 }
