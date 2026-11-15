@@ -14,11 +14,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Instalador no encontrado' }, { status: 404 });
     }
 
-    const fileContent = fs.readFileSync(filePath, 'utf8');
+    let fileContent = fs.readFileSync(filePath, 'utf8');
+    if (type === 'windows') {
+      fileContent = fileContent.replace(/\r?\n/g, '\r\n');
+    }
 
     return new NextResponse(fileContent, {
       headers: {
-        'Content-Type': type === 'windows' ? 'application/x-bat' : 'application/x-sh',
+        'Content-Type': type === 'windows' ? 'application/x-bat; charset=utf-8' : 'application/x-sh; charset=utf-8',
         'Content-Disposition': `attachment; filename="${fileName}"`,
       },
     });
