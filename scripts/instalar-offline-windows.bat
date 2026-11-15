@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 title OmniPOS - Instalador Modo Offline
 color 0A
 
@@ -64,7 +64,10 @@ echo.
 echo [2/5] Verificando archivos del sistema...
 set "INSTALL_DIR=%USERPROFILE%\OmniPOS"
 
-if exist "%INSTALL_DIR%\package.json" goto :repo_ready
+if exist "%INSTALL_DIR%\package.json" (
+    echo Carpeta del sistema existente encontrada en %INSTALL_DIR%.
+    goto :repo_ready
+)
 
 echo Carpeta del sistema no encontrada. Descargando codigo de OmniPOS desde GitHub...
 echo Guardando en: %INSTALL_DIR%
@@ -122,8 +125,11 @@ if not exist "package.json" (
 if exist "%~dp0catalogo_offline.json" (
     echo Copiando catalogo inicial desde la carpeta actual...
     copy /Y "%~dp0catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
-) else if exist "%USERPROFILE%\Downloads\catalogo_offline.json" (
+) else if exist "%USERPROFILE%\Descargas\catalogo_offline.json" (
     echo Copiando catalogo inicial desde Descargas...
+    copy /Y "%USERPROFILE%\Descargas\catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
+) else if exist "%USERPROFILE%\Downloads\catalogo_offline.json" (
+    echo Copiando catalogo inicial desde Downloads...
     copy /Y "%USERPROFILE%\Downloads\catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
 ) else if not exist "%INSTALL_DIR%\catalogo_offline.json" (
     echo Descargando catalogo inicial de la sucursal desde la nube...
@@ -150,61 +156,112 @@ echo NEXT_PUBLIC_APP_NAME="OmniPOS Offline - Sucursal Silvestre">> .env
 
 :: Paso 4: Instalar dependencias y preparar base de datos
 echo.
-echo [4/5] Instalando dependencias de OmniPOS (esto toma 1-2 minutos)...
-call npm install --no-audit
+echo [4/5] Instalando dependencias de OmniPOS (esto toma 1-2 minutos con datos moviles)...
+echo Por favor espera, no cierres esta ventana...
+
+cmd /c "npm install --no-audit"
 if errorlevel 1 (
     echo.
-    echo ERROR al ejecutar npm install. Verifica tu conexion a internet.
-    goto :fin
+    echo ========================================================
+    echo AVISO: npm install arrojo un codigo de salida distinto de 0.
+    echo Reintentando instalacion con cache local...
+    echo ========================================================
+    cmd /c "npm install --prefer-offline"
 )
 
 echo Generando cliente de base de datos...
-call npx prisma generate
-call npx prisma db push --accept-data-loss
+cmd /c "npx prisma generate"
+cmd /c "npx prisma db push --accept-data-loss"
 
 if exist catalogo_offline.json (
     echo Sembrando catalogo offline de productos y usuarios...
-    node scripts\seed-offline.js
+    cmd /c "node scripts\seed-offline.js"
 ) else (
     echo [AVISO] catalogo_offline.json no encontrado, se iniciara con base de datos limpia.
 )
 
-:: Paso 5: Crear accesos directos en el Escritorio
+:: Paso 5: Crear accesos directos
 echo.
-echo [5/5] Creando accesos directos en tu Escritorio...
-set "DESKTOP=%USERPROFILE%\Desktop"
+echo [5/5] Creando accesos directos...
 
-echo @echo off> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo title OmniPOS - Punto de Venta Local>> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo color 0B>> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo echo Iniciando sistema local en http://localhost:3000 ...>> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo cd /d "%INSTALL_DIR%">> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo start http://localhost:3000/dashboard/pos>> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo npm run dev>> "%DESKTOP%\Iniciar OmniPOS.bat"
-echo pause>> "%DESKTOP%\Iniciar OmniPOS.bat"
+:: 1. Crear lanzadores dentro de la propia carpeta OmniPOS
+echo @echo off> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo title OmniPOS - Punto de Venta Local>> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo color 0B>> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo echo Iniciando sistema local en http://localhost:3000 ...>> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo cd /d "%INSTALL_DIR%">> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo start http://localhost:3000/dashboard/pos>> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo npm run dev>> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
+echo pause>> "%INSTALL_DIR%\Iniciar OmniPOS.bat"
 
-echo @echo off> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo title OmniPOS - Sincronizar Ventas a la Nube>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo color 0E>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo echo Conecta los datos de tu celular a la PC antes de continuar...>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo pause>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo cd /d "%INSTALL_DIR%">> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo node scripts\sync-to-cloud.js>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo echo.>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo echo Proceso terminado.>> "%DESKTOP%\Sincronizar a la Nube.bat"
-echo pause>> "%DESKTOP%\Sincronizar a la Nube.bat"
+echo @echo off> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo title OmniPOS - Sincronizar Ventas a la Nube>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo color 0E>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo echo Conecta los datos de tu celular a la PC antes de continuar...>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo pause>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo cd /d "%INSTALL_DIR%">> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo node scripts\sync-to-cloud.js>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo echo.>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo echo Proceso terminado.>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+echo pause>> "%INSTALL_DIR%\Sincronizar a la Nube.bat"
+
+:: 2. Detectar ruta real del Escritorio (español, inglés y OneDrive)
+set "DESKTOP="
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "[Environment]::GetFolderPath('Desktop')"`) do set "DESKTOP=%%i"
+
+if not defined DESKTOP (
+    if exist "%USERPROFILE%\Escritorio" set "DESKTOP=%USERPROFILE%\Escritorio"
+    if exist "%USERPROFILE%\Desktop" set "DESKTOP=%USERPROFILE%\Desktop"
+    if exist "%USERPROFILE%\OneDrive\Escritorio" set "DESKTOP=%USERPROFILE%\OneDrive\Escritorio"
+    if exist "%USERPROFILE%\OneDrive\Desktop" set "DESKTOP=%USERPROFILE%\OneDrive\Desktop"
+)
+
+:: Copiar accesos a todos los escritorios encontrados
+if defined DESKTOP (
+    if exist "%DESKTOP%" (
+        copy /Y "%INSTALL_DIR%\Iniciar OmniPOS.bat" "%DESKTOP%\Iniciar OmniPOS.bat" >nul
+        copy /Y "%INSTALL_DIR%\Sincronizar a la Nube.bat" "%DESKTOP%\Sincronizar a la Nube.bat" >nul
+        echo [OK] Accesos copiados a: %DESKTOP%
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%DESKTOP%\Iniciar OmniPOS.lnk'); $s.TargetPath = '%INSTALL_DIR%\Iniciar OmniPOS.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Save()" >nul 2>nul
+    )
+)
+
+if exist "%USERPROFILE%\Escritorio" (
+    copy /Y "%INSTALL_DIR%\Iniciar OmniPOS.bat" "%USERPROFILE%\Escritorio\Iniciar OmniPOS.bat" >nul 2>nul
+    copy /Y "%INSTALL_DIR%\Sincronizar a la Nube.bat" "%USERPROFILE%\Escritorio\Sincronizar a la Nube.bat" >nul 2>nul
+)
+
+if exist "%USERPROFILE%\Desktop" (
+    copy /Y "%INSTALL_DIR%\Iniciar OmniPOS.bat" "%USERPROFILE%\Desktop\Iniciar OmniPOS.bat" >nul 2>nul
+    copy /Y "%INSTALL_DIR%\Sincronizar a la Nube.bat" "%USERPROFILE%\Desktop\Sincronizar a la Nube.bat" >nul 2>nul
+)
+
+if exist "%USERPROFILE%\OneDrive\Escritorio" (
+    copy /Y "%INSTALL_DIR%\Iniciar OmniPOS.bat" "%USERPROFILE%\OneDrive\Escritorio\Iniciar OmniPOS.bat" >nul 2>nul
+    copy /Y "%INSTALL_DIR%\Sincronizar a la Nube.bat" "%USERPROFILE%\OneDrive\Escritorio\Sincronizar a la Nube.bat" >nul 2>nul
+)
 
 echo.
 echo ========================================================
 echo   ¡INSTALACION COMPLETADA CON EXITO!
 echo ========================================================
 echo.
-echo Se crearon 2 accesos directos en tu Escritorio:
-echo 1. "Iniciar OmniPOS.bat"        - Abre tu caja y cobra sin internet.
-echo 2. "Sincronizar a la Nube.bat" - Sube ventas cuando haya conexion.
+echo Los accesos directos han sido creados en tu Escritorio y en:
+echo %INSTALL_DIR%
 echo.
-echo Ya puedes desconectar el celular y dar doble clic en "Iniciar OmniPOS.bat".
+echo Abriendo la carpeta en pantalla...
+start explorer.exe "%INSTALL_DIR%"
+if defined DESKTOP start explorer.exe "%DESKTOP%"
+
 echo.
+echo Ya puedes desconectar el celular.
+echo.
+set /p START_NOW="¿Deseas iniciar OmniPOS ahora mismo? (S/N): "
+if /i "%START_NOW%"=="S" (
+    echo Iniciando OmniPOS...
+    start http://localhost:3000/dashboard/pos
+    npm run dev
+)
 
 :fin
 echo.
