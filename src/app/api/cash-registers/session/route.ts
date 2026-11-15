@@ -22,9 +22,12 @@ export async function GET(request: Request) {
 
     if (!activeSession) {
       const branchId = await resolveBranchId(session);
-      // Retornamos las cajas disponibles de la sucursal para poder abrir una
+      const isPrivileged = ['ADMIN', 'MANAGER'].includes((session.user as any)?.role);
+
       const registers = await prisma.cashRegister.findMany({
-        where: { branchId, isActive: true }
+        where: isPrivileged ? { isActive: true } : { branchId, isActive: true },
+        include: { branch: true },
+        orderBy: { name: 'asc' }
       });
       return NextResponse.json({ activeSession: null, availableRegisters: registers });
     }

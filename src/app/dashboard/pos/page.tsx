@@ -110,7 +110,8 @@ export default function POSPage() {
 
   const handleOpenRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOnline) return alert('Debes estar conectado a internet para abrir la caja.');
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (!isOnline && !isLocalhost) return alert('Debes estar conectado a internet para abrir la caja.');
     
     try {
       const res = await fetch('/api/cash-registers/session', {
@@ -131,7 +132,8 @@ export default function POSPage() {
   };
 
   const handleCloseRegisterClick = async () => {
-    if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (!isOnline && !isLocalhost) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
     if (pendingCount > 0) {
       const synced = await syncQueue();
       if (!synced) {
@@ -149,7 +151,8 @@ export default function POSPage() {
   };
 
   const processCloseRegister = async (totalAmount: number, breakdown: any) => {
-    if (!isOnline) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (!isOnline && !isLocalhost) return alert('Debes estar conectado a internet para cerrar la caja y hacer el corte Z.');
 
     
     
@@ -504,7 +507,9 @@ export default function POSPage() {
                   className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-black"
                 >
                   {availableRegisters.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
+                    <option key={r.id} value={r.id}>
+                      {r.name} {r.branch?.name ? `(${r.branch.name})` : ''}
+                    </option>
                   ))}
                 </select>
               </div>
