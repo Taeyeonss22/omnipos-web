@@ -66,3 +66,53 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create user', details: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Solo el administrador puede modificar empleados' }, { status: 403 });
+  }
+
+  try {
+    const data = await request.json();
+    const { id, password, firstName, lastName, roleId, branchId, isActive } = data;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID de usuario requerido' }, { status: 400 });
+    }
+
+    const updateData: any = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (roleId !== undefined) updateData.roleId = roleId;
+    if (branchId !== undefined) updateData.branchId = branchId || null;
+    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+
+    if (password) {
+      if (String(password).length < 6) {
+        return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 });
+      }
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        roleId: true,
+        branchId: true,
+        role: true,
+        branch: true
+      }
+    });
+
+    return NextResponse.json({ message: 'Usuario actualizado exitosamente', user: updatedUser });
+  } catch (error: any) {
+    return NextResponse.json({ error: 'Error al actualizar usuario', details: error.message }, { status: 500 });
+  }
+}

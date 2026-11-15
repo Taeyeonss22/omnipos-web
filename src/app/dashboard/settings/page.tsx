@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Store, Plus, Users, WifiOff, ArrowRight } from 'lucide-react';
+import { Store, Plus, Users, WifiOff, ArrowRight, Key } from 'lucide-react';
 
 export default function SettingsPage() {
   const [branches, setBranches] = useState<any[]>([]);
@@ -13,6 +13,8 @@ export default function SettingsPage() {
   const [roles, setRoles] = useState<any[]>([]);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', password: '', roleId: '', branchId: '' });
+  const [passwordModalUser, setPasswordModalUser] = useState<any>(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
 
   // Printer Settings
   const [printerSettings, setPrinterSettings] = useState({
@@ -94,8 +96,74 @@ export default function SettingsPage() {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwordModalUser || !newPasswordValue) return;
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: passwordModalUser.id, password: newPasswordValue })
+      });
+      if (res.ok) {
+        alert(`✅ Contraseña actualizada con éxito para ${passwordModalUser.email}`);
+        setPasswordModalUser(null);
+        setNewPasswordValue('');
+      } else {
+        const data = await res.json();
+        alert(`❌ Error actualizando contraseña: ${data.error || 'Ocurrió un error'}`);
+      }
+    } catch (err: any) {
+      alert(`❌ Error de conexión: ${err.message}`);
+    }
+  };
+
   return (
     <div className="space-y-6 relative">
+      {/* Modal Cambiar Contraseña */}
+      {passwordModalUser && (
+        <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 items-center p-4">
+          <div className="w-[380px] rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-2">
+              <Key className="w-5 h-5 text-purple-600" /> Cambiar Contraseña
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">
+              Asignando nueva clave para <strong>{passwordModalUser.email}</strong> ({passwordModalUser.firstName} {passwordModalUser.lastName})
+            </p>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Nueva Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPasswordValue}
+                  onChange={e => setNewPasswordValue(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full rounded-md border border-gray-300 p-2.5 text-sm text-black focus:ring-2 focus:ring-purple-500 outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPasswordModalUser(null)}
+                  className="rounded-md px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-md bg-purple-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 shadow"
+                >
+                  Guardar Contraseña
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal Nueva Sucursal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex justify-center bg-black bg-opacity-50 sm:items-start sm:pt-10 items-center overflow-y-auto p-4">
@@ -244,13 +312,21 @@ export default function SettingsPage() {
           
           <ul className="divide-y divide-gray-200 border rounded-md max-h-96 overflow-y-auto">
             {users.map(user => (
-              <li key={user.id} className="p-4 hover:bg-gray-50">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-medium text-gray-900">{user.firstName} {user.lastName}</div>
-                    <div className="text-sm text-gray-500">{user.email} (Rol: {user.role?.name})</div>
-                  </div>
-                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{user.branch?.name}</span>
+              <li key={user.id} className="p-4 hover:bg-gray-50 flex justify-between items-center">
+                <div>
+                  <div className="font-medium text-gray-900">{user.firstName} {user.lastName}</div>
+                  <div className="text-sm text-gray-500">{user.email} (Rol: <span className="font-semibold text-gray-700">{user.role?.name}</span>)</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{user.branch?.name || 'Todas / Matriz'}</span>
+                  <button
+                    onClick={() => { setPasswordModalUser(user); setNewPasswordValue(''); }}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-purple-100 hover:text-purple-700 border border-gray-200 px-2.5 py-1.5 rounded transition"
+                    title="Cambiar contraseña de este usuario"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    Cambiar clave
+                  </button>
                 </div>
               </li>
             ))}

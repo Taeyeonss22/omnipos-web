@@ -11,7 +11,7 @@ interface Product {
   price: number;
   cost: number;
   category: { name: string };
-  inventories: { quantity: number; minStock: number }[];
+  inventories: { quantity: number; minStock: number; location?: string | null }[];
 }
 
 export default function InventoryPage() {
