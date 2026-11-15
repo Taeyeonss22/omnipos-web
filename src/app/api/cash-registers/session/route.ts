@@ -4,13 +4,15 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { resolveBranchId } from '@/lib/session';
 
-// GET: Obtener la sesión activa del usuario
+// GET: Obtener la sesión activa del usuario (o la sesión abierta de la caja de su sucursal)
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const activeSession = await prisma.cashRegisterSession.findFirst({
+    const branchId = await resolveBranchId(session);
+
+    let activeSession = await prisma.cashRegisterSession.findFirst({
       where: {
         userId: session.user.id,
         status: 'OPEN'
@@ -20,8 +22,20 @@ export async function GET(request: Request) {
       }
     });
 
+    // Si el usuario actual no abrió el turno pero la caja de su sucursal ya está abierta, retomarla
+    if (!activeSession && branchId) {
+      activeSession = await prisma.cashRegisterSession.findFirst({
+        where: {
+          status: 'OPEN',
+          register: { branchId }
+        },
+        include: {
+          register: true
+        }
+      });
+    }
+
     if (!activeSession) {
-      const branchId = await resolveBranchId(session);
       const isPrivileged = ['ADMIN', 'MANAGER'].includes((session.user as any)?.role);
 
       const registers = await prisma.cashRegister.findMany({
@@ -38,7 +52,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: Abrir una nueva sesión de caja
+// POST: Abrir una nueva sesión de caja (o retomar si ya estaba abierta)
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -61,21 +75,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'La caja seleccionada no existe o está inactiva' }, { status: 400 });
     }
 
-    // El usuario no puede tener dos turnos abiertos al mismo tiempo
-    const userOpen = await prisma.cashRegisterSession.findFirst({
-      where: { userId: session.user.id, status: 'OPEN' }
-    });
-    if (userOpen) {
-      return NextResponse.json({ error: 'Ya tienes un turno abierto' }, { status: 400 });
-    }
-
-    // Verificar que la caja no esté abierta por otro usuario
+    // Si la caja seleccionada ya tiene un turno abierto (por ej. por el gerente u otro cajero), retomarlo
     const existing = await prisma.cashRegisterSession.findFirst({
       where: { registerId, status: 'OPEN' }
     });
 
     if (existing) {
-      return NextResponse.json({ error: 'Esta caja ya está abierta' }, { status: 400 });
+      const resumed = await prisma.cashRegisterSession.update({
+        where: { id: existing.id },
+        data: { userId: session.user.id },
+        include: { register: true }
+      });
+      return NextResponse.json(resumed, { status: 200 });
+    }
+
+    // El usuario no puede tener dos turnos abiertos al mismo tiempo en otra caja
+    const userOpen = await prisma.cashRegisterSession.findFirst({
+      where: { userId: session.user.id, status: 'OPEN' }
+    });
+    if (userOpen) {
+      return NextResponse.json(userOpen, { status: 200 });
     }
 
     const newSession = await prisma.cashRegisterSession.create({
@@ -110,6 +129,7 @@ export async function PUT(request: Request) {
     const activeSession = await prisma.cashRegisterSession.findUnique({
       where: { id: sessionId },
       include: {
+        register: true,
         sales: { include: { payments: true } },
         payments: { include: { sale: { select: { status: true } } } },
         creditPayments: true,
@@ -121,9 +141,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Sesión no válida o ya cerrada' }, { status: 400 });
     }
 
-    // Solo el dueño del turno (o un admin/gerente) puede hacer el corte
+    // Permitir hacer el corte al dueño del turno, admin/gerente o al cajero de esa misma sucursal
     const role = session.user.role;
-    if (activeSession.userId !== session.user.id && role !== 'ADMIN' && role !== 'MANAGER') {
+    const branchId = await resolveBranchId(session);
+    const isSameBranch = branchId && activeSession.register?.branchId === branchId;
+    if (activeSession.userId !== session.user.id && !isSameBranch && role !== 'ADMIN' && role !== 'MANAGER') {
       return NextResponse.json({ error: 'No puedes cerrar el turno de otro usuario' }, { status: 403 });
     }
 

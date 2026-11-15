@@ -82,7 +82,7 @@ export default function SalesHistoryPage() {
       });
       alert('Ticket enviado a impresión local.');
     } catch (error) {
-      console.error(error);
+      console.warn('Print bridge no disponible:', error);
       alert('No se pudo contactar a la impresora. Asegúrate de que Print Bridge esté corriendo.');
     }
   };
