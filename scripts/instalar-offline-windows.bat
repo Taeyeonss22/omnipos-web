@@ -28,7 +28,18 @@ echo [AVISO] Node.js no esta instalado en este equipo.
 echo Intentando descargar e instalar Node.js LTS automaticamente...
 echo Espera un momento, esto puede tardar unos minutos con datos moviles...
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Write-Host 'Descargando instalador de Node.js...'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi', '$env:TEMP\nodejs_setup.msi'); Write-Host 'Instalando Node.js (por favor espera)...'; Start-Process msiexec.exe -ArgumentList '/i', ('`\"' + $env:TEMP + '\nodejs_setup.msi`\"'), '/passive' -Wait"
+set "NODE_MSI=%TEMP%\nodejs_setup.msi"
+where curl >nul 2>nul
+if not errorlevel 1 (
+    curl -L -A "Mozilla/5.0" "https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi" -o "%NODE_MSI%"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent', 'Mozilla/5.0'); $wc.DownloadFile('https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi', '%NODE_MSI%')"
+)
+
+if exist "%NODE_MSI%" (
+    echo Instalando Node.js (por favor espera)...
+    msiexec.exe /i "%NODE_MSI%" /passive
+)
 
 set "PATH=%PATH%;%ProgramFiles%\nodejs;%LOCALAPPDATA%\Programs\nodejs"
 
@@ -60,7 +71,44 @@ echo Guardando en: %INSTALL_DIR%
 
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Write-Host 'Descargando paquete de OmniPOS...'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://github.com/Taeyeonss22/omnipos-web/archive/refs/heads/main.zip', '$env:TEMP\omnipos.zip'); Write-Host 'Extrayendo archivos...'; Expand-Archive -Path '$env:TEMP\omnipos.zip' -DestinationPath '$env:TEMP\omnipos_extracted' -Force; Copy-Item -Path '$env:TEMP\omnipos_extracted\omnipos-web-main\*' -Destination '$env:USERPROFILE\OmniPOS' -Recurse -Force; Remove-Item '$env:TEMP\omnipos.zip' -Force; Remove-Item '$env:TEMP\omnipos_extracted' -Recurse -Force"
+set "ZIP_FILE=%TEMP%\omnipos.zip"
+set "EXTRACT_DIR=%TEMP%\omnipos_extracted"
+
+if exist "%ZIP_FILE%" del /F /Q "%ZIP_FILE%" >nul 2>nul
+if exist "%EXTRACT_DIR%" rd /S /Q "%EXTRACT_DIR%" >nul 2>nul
+
+echo Descargando paquete del sistema...
+where curl >nul 2>nul
+if not errorlevel 1 (
+    curl -L -A "Mozilla/5.0" "https://github.com/Taeyeonss22/omnipos-web/archive/refs/heads/main.zip" -o "%ZIP_FILE%"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent', 'Mozilla/5.0'); $wc.DownloadFile('https://github.com/Taeyeonss22/omnipos-web/archive/refs/heads/main.zip', '%ZIP_FILE%')"
+)
+
+if not exist "%ZIP_FILE%" (
+    echo.
+    echo ERROR: No se pudo descargar el archivo de GitHub.
+    echo Verifica tu conexion a los datos moviles.
+    goto :fin
+)
+
+echo Extrayendo archivos del sistema...
+where tar >nul 2>nul
+if not errorlevel 1 (
+    mkdir "%EXTRACT_DIR%" 2>nul
+    tar -xf "%ZIP_FILE%" -C "%EXTRACT_DIR%"
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%ZIP_FILE%' -DestinationPath '%EXTRACT_DIR%' -Force"
+)
+
+if exist "%EXTRACT_DIR%\omnipos-web-main" (
+    xcopy /E /I /Y "%EXTRACT_DIR%\omnipos-web-main\*" "%INSTALL_DIR%\" >nul
+) else (
+    xcopy /E /I /Y "%EXTRACT_DIR%\*" "%INSTALL_DIR%\" >nul
+)
+
+del /F /Q "%ZIP_FILE%" >nul 2>nul
+rd /S /Q "%EXTRACT_DIR%" >nul 2>nul
 
 :repo_ready
 cd /d "%INSTALL_DIR%"
@@ -72,14 +120,19 @@ if not exist "package.json" (
 
 :: Copiar catalogo si se encuentra en Descargas o carpeta actual
 if exist "%~dp0catalogo_offline.json" (
-    echo Copiando catalogo inicial desde %~dp0...
+    echo Copiando catalogo inicial desde la carpeta actual...
     copy /Y "%~dp0catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
 ) else if exist "%USERPROFILE%\Downloads\catalogo_offline.json" (
     echo Copiando catalogo inicial desde Descargas...
     copy /Y "%USERPROFILE%\Downloads\catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
 ) else if not exist "%INSTALL_DIR%\catalogo_offline.json" (
     echo Descargando catalogo inicial de la sucursal desde la nube...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://omnipos-web-zeta.vercel.app/api/offline/export?download=1', 'catalogo_offline.json')"
+    where curl >nul 2>nul
+    if not errorlevel 1 (
+        curl -L -A "Mozilla/5.0" "https://omnipos-web-zeta.vercel.app/api/offline/export?download=1" -o "%INSTALL_DIR%\catalogo_offline.json"
+    ) else (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent', 'Mozilla/5.0'); $wc.DownloadFile('https://omnipos-web-zeta.vercel.app/api/offline/export?download=1', '%INSTALL_DIR%\catalogo_offline.json')"
+    )
 )
 
 :: Paso 3: Configurar base de datos SQLite local
