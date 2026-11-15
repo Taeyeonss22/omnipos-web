@@ -94,18 +94,18 @@ if not exist "package.json" (
 echo [OK] Codigo de OmniPOS listo en: %INSTALL_DIR%
 
 :: Copiar catalogo si se encuentra en Descargas o carpeta actual
-if exist "%~dp0catalogo_offline.json" (
+if exist "%~dp0catalogo_offline*.json" (
     echo Copiando catalogo inicial desde la carpeta del instalador...
-    copy /Y "%~dp0catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
-) else if exist "%USERPROFILE%\Descargas\catalogo_offline.json" (
+    copy /Y "%~dp0catalogo_offline*.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
+) else if exist "%USERPROFILE%\Descargas\catalogo_offline*.json" (
     echo Copiando catalogo inicial desde Descargas...
-    copy /Y "%USERPROFILE%\Descargas\catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
-) else if exist "%USERPROFILE%\Downloads\catalogo_offline.json" (
+    copy /Y "%USERPROFILE%\Descargas\catalogo_offline*.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
+) else if exist "%USERPROFILE%\Downloads\catalogo_offline*.json" (
     echo Copiando catalogo inicial desde Downloads...
-    copy /Y "%USERPROFILE%\Downloads\catalogo_offline.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
+    copy /Y "%USERPROFILE%\Downloads\catalogo_offline*.json" "%INSTALL_DIR%\catalogo_offline.json" >nul
 ) else if not exist "%INSTALL_DIR%\catalogo_offline.json" (
     echo Descargando catalogo inicial de la sucursal desde la nube...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent', 'Mozilla/5.0'); $wc.DownloadFile('https://omnipos-web-zeta.vercel.app/api/offline/export?download=1', '%INSTALL_DIR%\catalogo_offline.json')"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.Headers.Add('User-Agent', 'Mozilla/5.0'); $wc.DownloadFile('https://omnipos-web-zeta.vercel.app/api/offline/export?download=1&secret=omnipos-offline-secure-key-2026', '%INSTALL_DIR%\catalogo_offline.json')"
 )
 
 :: Paso 3: Configurar base de datos SQLite local
