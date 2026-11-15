@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Store, Plus, Users } from 'lucide-react';
+import Link from 'next/link';
+import { Store, Plus, Users, WifiOff, ArrowRight } from 'lucide-react';
 
 export default function SettingsPage() {
   const [branches, setBranches] = useState<any[]>([]);
@@ -172,6 +173,27 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">Configuración del Sistema</h1>
           <p className="text-sm text-gray-500">Administra sucursales, almacenes y empleados.</p>
         </div>
+      </div>
+
+      {/* Banner Instalador Offline */}
+      <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-blue-600 p-2.5 text-white">
+            <WifiOff className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900">¿Vas a abrir una sucursal sin conexión a internet?</h3>
+            <p className="text-xs text-gray-600">
+              Descarga el instalador automatizado para configurar la computadora en modo local offline con un solo clic.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/offline-installer"
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors shrink-0"
+        >
+          Ir al Instalador Offline <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
